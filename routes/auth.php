@@ -5,8 +5,9 @@ use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Route::middleware('guest')->group(function () {
-    Volt::route('login', 'auth.login')
-        ->name('login');
+// Commented-out so Filament works at root level
+//    Volt::route('login', 'auth.login')
+//        ->name('login');
 
     Volt::route('register', 'auth.register')
         ->name('register');
@@ -31,5 +32,6 @@ Route::middleware('auth')->group(function () {
         ->name('password.confirm');
 });
 
-Route::post('logout', App\Livewire\Actions\Logout::class)
-    ->name('logout');
+// Commented-out so Filament works at root level
+//Route::post('logout', App\Livewire\Actions\Logout::class)
+//    ->name('logout');
