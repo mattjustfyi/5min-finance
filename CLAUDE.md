@@ -1,0 +1,2 @@
+- Use idiomatic and built-in Laravel patterns and approaches.
+- Use Filament for UI where possible
