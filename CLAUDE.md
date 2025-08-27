@@ -1,2 +1,4 @@
+- Prefix all `php artisan` commands with `herd`, e.g. `herd php artisan ...`
 - Use idiomatic and built-in Laravel patterns and approaches.
+- Use standard laravel commands when creating models, filament resources, migrations, etc. Then modify the result afterwards.
 - Use Filament for UI where possible
