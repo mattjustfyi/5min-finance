@@ -17,7 +17,9 @@ class DebtAllocationFactory extends Factory
     public function definition(): array
     {
         return [
-            //
+            'user_id' => \App\Models\User::factory(),
+            'type' => fake()->randomElement(\App\Enums\DebtType::cases()),
+            'name' => fake()->words(3, true),
         ];
     }
 }

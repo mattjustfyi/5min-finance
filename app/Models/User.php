@@ -71,6 +71,22 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Get the goal allocations for the user.
+     */
+    public function goalAllocations(): HasMany
+    {
+        return $this->hasMany(GoalAllocation::class);
+    }
+
+    /**
+     * Get the debt allocations for the user.
+     */
+    public function debtAllocations(): HasMany
+    {
+        return $this->hasMany(DebtAllocation::class);
+    }
+
+    /**
      * Determine if the user can access the given Filament panel.
      *
      * This is required in production or the panel will return a 403.
