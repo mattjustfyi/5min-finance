@@ -30,13 +30,4 @@ class Account extends Model
         return $this->belongsTo(User::class);
     }
 
-    public static function rules(): array
-    {
-        return [
-            'name' => 'required',
-            'currency' => 'required|size:3|regex:/^[A-Z]{3}$/',
-            'conversion_rate' => 'required|numeric|min:0',
-            'retirement_type' => 'required|in:retirement,non_retirement',
-        ];
-    }
 }
