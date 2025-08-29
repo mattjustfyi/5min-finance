@@ -46,9 +46,9 @@ class SnapshotForm
                             ->required(),
                         TextInput::make('balance')
                             ->label('Balance')
-                            ->numeric()
-                            ->step(0.01)
-                            ->required(),
+                            ->rules(['required', 'numeric', 'min:0'])
+                            ->inputMode('decimal')
+                            ->placeholder('0.00'),
                     ])
                     ->itemLabel(function (array $state): ?string {
                         if (! isset($state['accountId'])) {
@@ -104,17 +104,17 @@ class SnapshotForm
                             ->required(),
                         TextInput::make('targetAmount')
                             ->label('Target Amount')
-                            ->numeric()
-                            ->step(0.01)
-                            ->required(),
+                            ->rules(['required', 'numeric', 'min:0'])
+                            ->inputMode('decimal')
+                            ->placeholder('0.00'),
                         Repeater::make('deductions')
                             ->label('Deductions')
                             ->schema([
                                 TextInput::make('amount')
                                     ->label('Amount')
-                                    ->numeric()
-                                    ->step(0.01)
-                                    ->required(),
+                                    ->rules(['required', 'numeric', 'min:0'])
+                                    ->inputMode('decimal')
+                                    ->placeholder('0.00'),
                                 TextInput::make('description')
                                     ->label('Description')
                                     ->required(),
@@ -154,9 +154,9 @@ class SnapshotForm
                             ->required(),
                         TextInput::make('amount')
                             ->label('Amount')
-                            ->numeric()
-                            ->step(0.01)
-                            ->required(),
+                            ->rules(['required', 'numeric', 'min:0'])
+                            ->inputMode('decimal')
+                            ->placeholder('0.00'),
                     ])
                     ->itemLabel(function (array $state): ?string {
                         if (! isset($state['debtId'])) {
