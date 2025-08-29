@@ -37,7 +37,8 @@ class SnapshotForm
                         Select::make('accountId')
                             ->label('Account')
                             ->options(function () {
-                                return Account::where('user_id', Filament::auth()->id())
+                                return Account::withTrashed()
+                                    ->where('user_id', Filament::auth()->id())
                                     ->pluck('name', 'id')
                                     ->toArray();
                             })
@@ -53,10 +54,11 @@ class SnapshotForm
                         if (! isset($state['accountId'])) {
                             return 'New Account';
                         }
-                        $account = Account::where('user_id', Filament::auth()->id())
+                        $account = Account::withTrashed()
+                            ->where('user_id', Filament::auth()->id())
                             ->find($state['accountId']);
 
-                        return 'Account: '.($account?->name ?? 'ID '.$state['accountId']);
+                        return $account?->name ?? 'ID '.$state['accountId'];
                     })
                     ->collapsed()
                     ->columnSpanFull()
@@ -94,7 +96,8 @@ class SnapshotForm
                         Select::make('goalId')
                             ->label('Goal')
                             ->options(function () {
-                                return GoalAllocation::where('user_id', Filament::auth()->id())
+                                return GoalAllocation::withTrashed()
+                                    ->where('user_id', Filament::auth()->id())
                                     ->pluck('name', 'id')
                                     ->toArray();
                             })
@@ -128,10 +131,11 @@ class SnapshotForm
                         if (! isset($state['goalId'])) {
                             return 'New Goal';
                         }
-                        $goal = GoalAllocation::where('user_id', Filament::auth()->id())
+                        $goal = GoalAllocation::withTrashed()
+                            ->where('user_id', Filament::auth()->id())
                             ->find($state['goalId']);
 
-                        return 'Goal: '.($goal?->name ?? 'ID '.$state['goalId']);
+                        return $goal?->name ?? 'ID '.$state['goalId'];
                     })
                     ->collapsed()
                     ->columnSpanFull()
@@ -143,7 +147,8 @@ class SnapshotForm
                         Select::make('debtId')
                             ->label('Debt')
                             ->options(function () {
-                                return DebtAllocation::where('user_id', Filament::auth()->id())
+                                return DebtAllocation::withTrashed()
+                                    ->where('user_id', Filament::auth()->id())
                                     ->pluck('name', 'id')
                                     ->toArray();
                             })
@@ -159,10 +164,11 @@ class SnapshotForm
                         if (! isset($state['debtId'])) {
                             return 'New Debt';
                         }
-                        $debt = DebtAllocation::where('user_id', Filament::auth()->id())
+                        $debt = DebtAllocation::withTrashed()
+                            ->where('user_id', Filament::auth()->id())
                             ->find($state['debtId']);
 
-                        return 'Debt: '.($debt?->name ?? 'ID '.$state['debtId']);
+                        return $debt?->name ?? 'ID '.$state['debtId'];
                     })
                     ->collapsed()
                     ->columnSpanFull()
