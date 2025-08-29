@@ -62,7 +62,6 @@ class SnapshotForm
                     })
                     ->collapsed()
                     ->columnSpanFull()
-                    ->required()
                     ->mutateDehydratedStateUsing(function (array $state): array {
                         // Convert from form format to storage format
                         $accounts = [];
@@ -138,8 +137,7 @@ class SnapshotForm
                         return $goal?->name ?? 'ID '.$state['goalId'];
                     })
                     ->collapsed()
-                    ->columnSpanFull()
-                    ->required(),
+                    ->columnSpanFull(),
 
                 Repeater::make('debts')
                     ->label('Debt Allocations')
@@ -171,8 +169,7 @@ class SnapshotForm
                         return $debt?->name ?? 'ID '.$state['debtId'];
                     })
                     ->collapsed()
-                    ->columnSpanFull()
-                    ->required(),
+                    ->columnSpanFull(),
             ]);
     }
 }
