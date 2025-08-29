@@ -32,16 +32,47 @@ class SnapshotForm
                     ->columnSpanFull()
                     ->rows(3),
 
-                KeyValue::make('accounts')
+                Repeater::make('accounts')
                     ->label('Account Balances')
-                    ->keyLabel('Account ID')
-                    ->valueLabel('Balance')
-                    ->addable()
-                    ->deletable()
-                    ->reorderable(false)
+                    ->schema([
+                        TextInput::make('accountId')
+                            ->label('Account ID')
+                            ->required(),
+                        TextInput::make('balance')
+                            ->label('Balance')
+                            ->numeric()
+                            ->step(0.01)
+                            ->required(),
+                    ])
+                    ->itemLabel(fn (array $state): ?string => 'Account: ' . ($state['accountId'] ?? 'New'))
+                    ->collapsed()
                     ->columnSpanFull()
-                    ->helperText('Map account IDs to their balance amounts')
-                    ->required(),
+                    ->required()
+                    ->mutateDehydratedStateUsing(function (array $state): array {
+                        // Convert from form format to storage format
+                        $accounts = [];
+                        foreach ($state as $item) {
+                            if (isset($item['accountId'], $item['balance'])) {
+                                $accounts[$item['accountId']] = [
+                                    'balance' => (float) $item['balance']
+                                ];
+                            }
+                        }
+                        return $accounts;
+                    })
+                    ->afterStateHydrated(function (Repeater $component, $state) {
+                        // Convert from storage format to form format
+                        if (is_array($state)) {
+                            $formData = [];
+                            foreach ($state as $accountId => $data) {
+                                $formData[] = [
+                                    'accountId' => $accountId,
+                                    'balance' => $data['balance'] ?? 0
+                                ];
+                            }
+                            $component->state($formData);
+                        }
+                    }),
 
                 Repeater::make('goals')
                     ->label('Goal Allocations')
