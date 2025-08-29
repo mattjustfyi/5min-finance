@@ -3,17 +3,16 @@
 namespace App\Filament\Resources\Snapshots\Schemas;
 
 use App\Models\Account;
-use App\Models\GoalAllocation;
 use App\Models\DebtAllocation;
+use App\Models\GoalAllocation;
+use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
-use Filament\Facades\Filament;
 
 class SnapshotForm
 {
@@ -35,8 +34,14 @@ class SnapshotForm
                 Repeater::make('accounts')
                     ->label('Account Balances')
                     ->schema([
-                        TextInput::make('accountId')
-                            ->label('Account ID')
+                        Select::make('accountId')
+                            ->label('Account')
+                            ->options(function () {
+                                return Account::where('user_id', Filament::auth()->id())
+                                    ->pluck('name', 'id')
+                                    ->toArray();
+                            })
+                            ->searchable()
                             ->required(),
                         TextInput::make('balance')
                             ->label('Balance')
@@ -44,7 +49,15 @@ class SnapshotForm
                             ->step(0.01)
                             ->required(),
                     ])
-                    ->itemLabel(fn (array $state): ?string => 'Account: ' . ($state['accountId'] ?? 'New'))
+                    ->itemLabel(function (array $state): ?string {
+                        if (! isset($state['accountId'])) {
+                            return 'New Account';
+                        }
+                        $account = Account::where('user_id', Filament::auth()->id())
+                            ->find($state['accountId']);
+
+                        return 'Account: '.($account?->name ?? 'ID '.$state['accountId']);
+                    })
                     ->collapsed()
                     ->columnSpanFull()
                     ->required()
@@ -54,10 +67,11 @@ class SnapshotForm
                         foreach ($state as $item) {
                             if (isset($item['accountId'], $item['balance'])) {
                                 $accounts[$item['accountId']] = [
-                                    'balance' => (float) $item['balance']
+                                    'balance' => (float) $item['balance'],
                                 ];
                             }
                         }
+
                         return $accounts;
                     })
                     ->afterStateHydrated(function (Repeater $component, $state) {
@@ -67,7 +81,7 @@ class SnapshotForm
                             foreach ($state as $accountId => $data) {
                                 $formData[] = [
                                     'accountId' => $accountId,
-                                    'balance' => $data['balance'] ?? 0
+                                    'balance' => $data['balance'] ?? 0,
                                 ];
                             }
                             $component->state($formData);
@@ -77,8 +91,14 @@ class SnapshotForm
                 Repeater::make('goals')
                     ->label('Goal Allocations')
                     ->schema([
-                        TextInput::make('goalId')
-                            ->label('Goal ID')
+                        Select::make('goalId')
+                            ->label('Goal')
+                            ->options(function () {
+                                return GoalAllocation::where('user_id', Filament::auth()->id())
+                                    ->pluck('name', 'id')
+                                    ->toArray();
+                            })
+                            ->searchable()
                             ->required(),
                         TextInput::make('targetAmount')
                             ->label('Target Amount')
@@ -102,9 +122,17 @@ class SnapshotForm
                             ])
                             ->itemLabel(fn (array $state): ?string => $state['description'] ?? null)
                             ->collapsed()
-                            ->cloneable()
+                            ->cloneable(),
                     ])
-                    ->itemLabel(fn (array $state): ?string => 'Goal: ' . ($state['goalId'] ?? 'New'))
+                    ->itemLabel(function (array $state): ?string {
+                        if (! isset($state['goalId'])) {
+                            return 'New Goal';
+                        }
+                        $goal = GoalAllocation::where('user_id', Filament::auth()->id())
+                            ->find($state['goalId']);
+
+                        return 'Goal: '.($goal?->name ?? 'ID '.$state['goalId']);
+                    })
                     ->collapsed()
                     ->columnSpanFull()
                     ->required(),
@@ -112,8 +140,14 @@ class SnapshotForm
                 Repeater::make('debts')
                     ->label('Debt Allocations')
                     ->schema([
-                        TextInput::make('debtId')
-                            ->label('Debt ID')
+                        Select::make('debtId')
+                            ->label('Debt')
+                            ->options(function () {
+                                return DebtAllocation::where('user_id', Filament::auth()->id())
+                                    ->pluck('name', 'id')
+                                    ->toArray();
+                            })
+                            ->searchable()
                             ->required(),
                         TextInput::make('amount')
                             ->label('Amount')
@@ -121,7 +155,15 @@ class SnapshotForm
                             ->step(0.01)
                             ->required(),
                     ])
-                    ->itemLabel(fn (array $state): ?string => 'Debt: ' . ($state['debtId'] ?? 'New'))
+                    ->itemLabel(function (array $state): ?string {
+                        if (! isset($state['debtId'])) {
+                            return 'New Debt';
+                        }
+                        $debt = DebtAllocation::where('user_id', Filament::auth()->id())
+                            ->find($state['debtId']);
+
+                        return 'Debt: '.($debt?->name ?? 'ID '.$state['debtId']);
+                    })
                     ->collapsed()
                     ->columnSpanFull()
                     ->required(),
