@@ -6,6 +6,7 @@ use App\Filament\Resources\Snapshots\SnapshotResource;
 use App\Models\Account;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Facades\Filament;
+use Filament\Support\Facades\FilamentView;
 
 class ViewAccountLists extends ViewRecord
 {
@@ -58,5 +59,16 @@ class ViewAccountLists extends ViewRecord
     public function getCashTotal(): float
     {
         return collect($this->getCashAccounts())->sum('balance');
+    }
+
+    public function getBreadcrumbs(): array
+    {
+        $resource = static::getResource();
+        
+        return [
+            $resource::getUrl('index') => $resource::getBreadcrumb(),
+            $resource::getUrl('edit', ['record' => $this->getRecord()]) => 'Edit',
+            '' => 'Account List',
+        ];
     }
 }
