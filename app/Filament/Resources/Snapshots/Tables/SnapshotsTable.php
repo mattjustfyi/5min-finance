@@ -60,16 +60,64 @@ class SnapshotsTable
                     ->sortable(false),
 
                 TextColumn::make('goals')
-                    ->label('Goal Count')
-                    ->formatStateUsing(function ($state): string {
-                        return is_array($state) ? count($state) . ' goals' : '0 goals';
+                    ->label('Goals')
+                    ->html()
+                    ->wrap()
+                    ->extraAttributes(['style' => 'min-width: 300px; width: 300px;'])
+                    ->getStateUsing(function ($record): string {
+                        if (!is_array($record->goals) || empty($record->goals)) {
+                            return 'No goals';
+                        }
+
+                        $goalLines = [];
+                        foreach ($record->goals as $data) {
+                            $goalId = $data['goalId'] ?? null;
+                            $targetAmount = $data['targetAmount'] ?? 0;
+                            
+                            if ($goalId) {
+                                $goal = \App\Models\GoalAllocation::withTrashed()
+                                    ->where('user_id', \Filament\Facades\Filament::auth()->id())
+                                    ->find($goalId);
+                                
+                                if ($goal) {
+                                    $formattedAmount = '$' . number_format($targetAmount, 2);
+                                    $goalLines[] = "• {$goal->name}: {$formattedAmount}";
+                                }
+                            }
+                        }
+
+                        return implode('<br>', $goalLines);
                     })
                     ->sortable(false),
 
                 TextColumn::make('debts')
-                    ->label('Debt Count')
-                    ->formatStateUsing(function ($state): string {
-                        return is_array($state) ? count($state) . ' debts' : '0 debts';
+                    ->label('Debts')
+                    ->html()
+                    ->wrap()
+                    ->extraAttributes(['style' => 'min-width: 300px; width: 300px;'])
+                    ->getStateUsing(function ($record): string {
+                        if (!is_array($record->debts) || empty($record->debts)) {
+                            return 'No debts';
+                        }
+
+                        $debtLines = [];
+                        foreach ($record->debts as $data) {
+                            $debtId = $data['debtId'] ?? null;
+                            $amount = $data['amount'] ?? 0;
+                            
+                            if ($debtId) {
+                                $debt = \App\Models\DebtAllocation::withTrashed()
+                                    ->where('user_id', \Filament\Facades\Filament::auth()->id())
+                                    ->find($debtId);
+                                
+                                if ($debt) {
+                                    $formattedAmount = '$' . number_format($amount, 2);
+                                    $debtLines[] = "• {$debt->name}: {$formattedAmount}";
+                                }
+                            }
+                        }
+
+                        return implode('<br>', $debtLines);
                     })
                     ->sortable(false),
 
