@@ -1,0 +1,69 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use InvalidArgumentException;
+
+class Snapshot extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'user_id',
+        'date',
+        'notes',
+        'accounts',
+        'goals',
+        'debts',
+    ];
+
+    protected $casts = [
+        'date' => 'date',
+        'accounts' => 'array',
+        'goals' => 'array',
+        'debts' => 'array',
+    ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    protected static function booted()
+    {
+        static::saving(function (Snapshot $snapshot) {
+            $snapshot->validateUniqueEntries();
+        });
+    }
+
+    private function validateUniqueEntries(): void
+    {
+        // Validate unique account IDs
+        if (is_array($this->accounts) && !empty($this->accounts)) {
+            $accountIds = array_keys($this->accounts);
+            if (count($accountIds) !== count(array_unique($accountIds))) {
+                throw new InvalidArgumentException('Duplicate accounts are not allowed in a snapshot.');
+            }
+        }
+
+        // Validate unique goal IDs
+        if (is_array($this->goals) && !empty($this->goals)) {
+            $goalIds = collect($this->goals)->pluck('goalId')->filter()->toArray();
+            if (count($goalIds) !== count(array_unique($goalIds))) {
+                throw new InvalidArgumentException('Duplicate goals are not allowed in a snapshot.');
+            }
+        }
+
+        // Validate unique debt IDs
+        if (is_array($this->debts) && !empty($this->debts)) {
+            $debtIds = collect($this->debts)->pluck('debtId')->filter()->toArray();
+            if (count($debtIds) !== count(array_unique($debtIds))) {
+                throw new InvalidArgumentException('Duplicate debts are not allowed in a snapshot.');
+            }
+        }
+    }
+}

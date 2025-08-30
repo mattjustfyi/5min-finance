@@ -87,6 +87,14 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Get the snapshots for the user.
+     */
+    public function snapshots(): HasMany
+    {
+        return $this->hasMany(Snapshot::class);
+    }
+
+    /**
      * Determine if the user can access the given Filament panel.
      *
      * This is required in production or the panel will return a 403.
