@@ -51,7 +51,11 @@ class SnapshotsTable
                             if ($account) {
                                 $balance = $data['balance'] ?? 0;
                                 $formattedBalance = $account->currency . ' ' . number_format($balance, 2);
-                                $accountLines[] = "• {$account->name}: {$formattedBalance}";
+                                
+                                // Determine icon based on retirement type
+                                $icon = $account->retirement_type->value === 'retirement' ? '💰' : '🏦';
+                                
+                                $accountLines[] = "• {$icon} {$account->name}: {$formattedBalance}";
                             }
                         }
 
