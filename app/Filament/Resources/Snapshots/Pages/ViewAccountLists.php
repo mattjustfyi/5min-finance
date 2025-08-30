@@ -13,6 +13,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Filament\Notifications\Notification;
 
 class ViewAccountLists extends ViewRecord
 {
@@ -79,5 +80,15 @@ class ViewAccountLists extends ViewRecord
             $resource::getUrl('edit', ['record' => $this->getRecord()]) => 'Edit',
             '' => 'Account List',
         ];
+    }
+
+    public function updateAccountBalances()
+    {
+        // Phase 1: Test Livewire action without page reload
+        Notification::make()
+            ->title('Save button clicked!')
+            ->body('This is a Livewire action - no page reload.')
+            ->success()
+            ->send();
     }
 }
