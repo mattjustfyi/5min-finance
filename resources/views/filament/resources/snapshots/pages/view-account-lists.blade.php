@@ -56,12 +56,18 @@
                                     </td>
                                     <td class="fi-ta-cell">
                                         <div class="fi-ta-col-wrp">
-                                            <div class="fi-ta-text">
-                                                <div>
-                                                    <div class="fi-ta-text-item">
-                                                        {{ $account['currency'] }} {{ number_format($account['balance'], 2) }}
-                                                    </div>
-                                                </div>
+                                            <div class="flex items-center gap-2">
+                                                <span class="text-sm text-gray-600">{{ $account['currency'] }}</span>
+                                                <x-filament::input.wrapper>
+                                                    <x-filament::input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        wire:model.live="accountBalances.{{ $account['id'] }}"
+                                                        class="text-right"
+                                                        style="min-width: 120px;"
+                                                    />
+                                                </x-filament::input.wrapper>
                                             </div>
                                         </div>
                                     </td>
@@ -86,7 +92,7 @@
                                         <div class="fi-ta-text">
                                             <div>
                                                 <div class="fi-ta-text-item">
-                                                    ${{ number_format($total, 2) }}
+                                                    ${{ number_format($this->cashTotal, 2) }}
                                                 </div>
                                             </div>
                                         </div>

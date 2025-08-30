@@ -14,11 +14,24 @@ use Filament\Tables\Contracts\HasTable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Filament\Notifications\Notification;
+use Livewire\Attributes\Computed;
 
 class ViewAccountLists extends ViewRecord
 {
     
     protected static string $resource = SnapshotResource::class;
+
+    public $accountBalances = [];
+
+    public function mount($record): void
+    {
+        parent::mount($record);
+        
+        // Initialize editable balances from JSON structure
+        foreach ($this->getCashAccounts() as $account) {
+            $this->accountBalances[$account['id']] = $account['balance'];
+        }
+    }
 
     protected function getViewData(): array
     {
@@ -66,9 +79,19 @@ class ViewAccountLists extends ViewRecord
     }
 
 
+    #[Computed]
+    public function cashTotal(): float
+    {
+        // Use editable balances for live calculation
+        $cashAccountIds = collect($this->getCashAccounts())->pluck('id')->toArray();
+        return collect($this->accountBalances)
+            ->only($cashAccountIds)
+            ->sum();
+    }
+
     public function getCashTotal(): float
     {
-        return collect($this->getCashAccounts())->sum('balance');
+        return $this->cashTotal;
     }
 
     public function getBreadcrumbs(): array
