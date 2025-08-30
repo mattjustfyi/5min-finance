@@ -1,31 +1,9 @@
 <x-filament-panels::page>
     <div class="max-w-md mx-auto space-y-4 px-4 sm:px-6">
-        {{-- Header --}}
-        <div class="flex items-center justify-between py-4">
-            <div class="flex items-center space-x-3">
-                <x-filament::button 
-                    icon="heroicon-o-arrow-left" 
-                    color="gray" 
-                    size="sm"
-                    href="{{ route('filament.user.resources.snapshots.view', $record) }}"
-                >
-                </x-filament::button>
-                <h1 class="text-xl font-semibold text-gray-900">{{ $this->getTitle() }}</h1>
-            </div>
-            <x-filament::button 
-                icon="heroicon-o-trash" 
-                color="gray" 
-                size="sm"
-            >
-            </x-filament::button>
-        </div>
-
         {{-- Cash Section --}}
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="flex items-center justify-between p-4 bg-gray-50">
-                <div class="flex items-center space-x-2">
-                    <h2 class="text-base font-medium text-gray-900">💰 Cash</h2>
-                </div>
+                <h2 class="!text-xl !font-bold !text-gray-900 dark:!text-white">💰 Cash</h2>
                 <x-filament::button 
                     size="xs" 
                     color="primary"
