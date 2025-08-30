@@ -8,6 +8,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
+use Filament\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
@@ -67,6 +68,9 @@ class SnapshotsTable
             ->recordActions([
                 ViewAction::make(),
                 EditAction::make(),
+                Action::make('accounts')
+                    ->label('Accounts')
+                    ->url(fn ($record) => route('filament.user.resources.snapshots.account-lists', $record)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

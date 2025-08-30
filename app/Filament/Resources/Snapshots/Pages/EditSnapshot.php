@@ -7,6 +7,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\ForceDeleteAction;
 use Filament\Actions\RestoreAction;
 use Filament\Actions\ViewAction;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\EditRecord;
 
 class EditSnapshot extends EditRecord
@@ -17,6 +18,9 @@ class EditSnapshot extends EditRecord
     {
         return [
             ViewAction::make(),
+            Action::make('accounts')
+                ->label('Accounts')
+                ->url(fn () => route('filament.user.resources.snapshots.account-lists', $this->getRecord())),
             DeleteAction::make(),
             ForceDeleteAction::make(),
             RestoreAction::make(),
