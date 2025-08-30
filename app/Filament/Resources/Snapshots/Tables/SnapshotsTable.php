@@ -33,9 +33,29 @@ class SnapshotsTable
                     ->searchable(),
 
                 TextColumn::make('accounts')
-                    ->label('Account Count')
-                    ->formatStateUsing(function ($state): string {
-                        return is_array($state) ? count($state) . ' accounts' : '0 accounts';
+                    ->label('Accounts')
+                    ->html()
+                    ->wrap()
+                    ->extraAttributes(['style' => 'min-width: 300px; width: 300px;'])
+                    ->getStateUsing(function ($record): string {
+                        if (!is_array($record->accounts) || empty($record->accounts)) {
+                            return 'No accounts';
+                        }
+
+                        $accountLines = [];
+                        foreach ($record->accounts as $accountId => $data) {
+                            $account = \App\Models\Account::withTrashed()
+                                ->where('user_id', \Filament\Facades\Filament::auth()->id())
+                                ->find($accountId);
+                            
+                            if ($account) {
+                                $balance = $data['balance'] ?? 0;
+                                $formattedBalance = $account->currency . ' ' . number_format($balance, 2);
+                                $accountLines[] = "• {$account->name}: {$formattedBalance}";
+                            }
+                        }
+
+                        return implode('<br>', $accountLines);
                     })
                     ->sortable(false),
 
