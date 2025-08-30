@@ -33,9 +33,29 @@ class DatabaseSeeder extends Seeder
             'password' => bcrypt('password'), // Easy to remember: "password"
         ]);
 
-        // Give the test user some specific accounts
-        Account::factory()->count(3)->create([
+        // Give the test user 3 specific cash accounts
+        Account::create([
             'user_id' => $testUser->id,
+            'name' => 'Primary Checking',
+            'currency' => 'USD',
+            'conversion_rate' => 1.0000,
+            'retirement_type' => \App\Enums\RetirementType::NON_RETIREMENT,
+        ]);
+        
+        Account::create([
+            'user_id' => $testUser->id,
+            'name' => 'Savings Account',
+            'currency' => 'USD',
+            'conversion_rate' => 1.0000,
+            'retirement_type' => \App\Enums\RetirementType::NON_RETIREMENT,
+        ]);
+        
+        Account::create([
+            'user_id' => $testUser->id,
+            'name' => 'Emergency Fund',
+            'currency' => 'USD',
+            'conversion_rate' => 1.0000,
+            'retirement_type' => \App\Enums\RetirementType::NON_RETIREMENT,
         ]);
 
         // Give the test user some specific allocations
