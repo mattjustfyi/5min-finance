@@ -35,46 +35,98 @@
                 </x-filament::button>
             </div>
 
-            <div class="divide-y divide-gray-100">
-                @forelse($this->getCashAccounts() as $account)
-                    <div class="flex items-center justify-between p-4">
-                        <span class="text-sm text-gray-900 font-medium">{{ $account['name'] }}</span>
-                        <div class="flex items-center space-x-3">
-                            <span class="text-sm font-semibold text-gray-900">
-                                {{ $account['currency'] }} {{ number_format($account['balance'], 2) }}
-                            </span>
-                            <x-filament::dropdown>
-                                <x-slot name="trigger">
-                                    <button class="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
-                                        <x-heroicon-o-ellipsis-vertical class="h-5 w-5" />
-                                    </button>
-                                </x-slot>
-                                
-                                <x-filament::dropdown.list>
-                                    <x-filament::dropdown.list.item>
-                                        Edit
-                                    </x-filament::dropdown.list.item>
-                                    <x-filament::dropdown.list.item>
-                                        Delete
-                                    </x-filament::dropdown.list.item>
-                                </x-filament::dropdown.list>
-                            </x-filament::dropdown>
+            @php
+                $accounts = $this->getCashAccounts();
+                $total = $this->getCashTotal();
+            @endphp
+            
+            @if(count($accounts) > 0)
+                {{-- Filament-styled table --}}
+                <div class="fi-ta-ctn divide-y divide-gray-200 overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:divide-white/10 dark:bg-gray-900 dark:ring-white/10">
+                    <table class="fi-ta-table w-full table-auto divide-y divide-gray-200 text-start dark:divide-white/5">
+                        <thead class="divide-y divide-gray-200 dark:divide-white/5">
+                            <tr class="bg-gray-50 dark:bg-white/5">
+                                <th class="fi-ta-header-cell px-3 py-3.5 sm:first-of-type:ps-6 sm:last-of-type:pe-6">
+                                    <span class="group flex w-full items-center justify-start gap-x-1">
+                                        <span class="fi-ta-header-cell-label text-sm font-semibold text-gray-950 dark:text-white">
+                                            Account Name
+                                        </span>
+                                    </span>
+                                </th>
+                                <th class="fi-ta-header-cell px-3 py-3.5 sm:first-of-type:ps-6 sm:last-of-type:pe-6">
+                                    <span class="group flex w-full items-center justify-end gap-x-1">
+                                        <span class="fi-ta-header-cell-label text-sm font-semibold text-gray-950 dark:text-white">
+                                            Balance
+                                        </span>
+                                    </span>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 whitespace-nowrap dark:divide-white/5">
+                            @foreach($accounts as $account)
+                                <tr class="fi-ta-row [@media(hover:hover)]:transition [@media(hover:hover)]:duration-75 hover:bg-gray-50 dark:hover:bg-white/5">
+                                    <td class="fi-ta-cell p-0 first-of-type:ps-1 last-of-type:pe-1 sm:first-of-type:ps-3 sm:last-of-type:pe-3">
+                                        <div class="fi-ta-col-wrp px-3 py-4">
+                                            <div class="fi-ta-text grid w-full gap-y-1">
+                                                <div class="flex w-max">
+                                                    <div class="fi-ta-text-item inline-flex items-center gap-1.5 px-0 py-0 text-sm leading-6 text-gray-950 dark:text-white font-medium">
+                                                        {{ $account['name'] }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="fi-ta-cell p-0 first-of-type:ps-1 last-of-type:pe-1 sm:first-of-type:ps-3 sm:last-of-type:pe-3">
+                                        <div class="fi-ta-col-wrp px-3 py-4 text-end">
+                                            <div class="fi-ta-text grid w-full gap-y-1">
+                                                <div class="flex w-max justify-end">
+                                                    <div class="fi-ta-text-item inline-flex items-center gap-1.5 px-0 py-0 text-sm leading-6 text-gray-950 dark:text-white font-semibold">
+                                                        {{ $account['currency'] }} {{ number_format($account['balance'], 2) }}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                            
+                            {{-- Total Row --}}
+                            <tr class="fi-ta-row [@media(hover:hover)]:transition [@media(hover:hover)]:duration-75 bg-gray-50 dark:bg-white/5 border-t-2 border-gray-300 dark:border-white/10">
+                                <td class="fi-ta-cell p-0 first-of-type:ps-1 last-of-type:pe-1 sm:first-of-type:ps-3 sm:last-of-type:pe-3">
+                                    <div class="fi-ta-col-wrp px-3 py-4">
+                                        <div class="fi-ta-text grid w-full gap-y-1">
+                                            <div class="flex w-max">
+                                                <div class="fi-ta-text-item inline-flex items-center gap-1.5 px-0 py-0 text-sm leading-6 text-gray-950 dark:text-white font-bold">
+                                                    Total
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="fi-ta-cell p-0 first-of-type:ps-1 last-of-type:pe-1 sm:first-of-type:ps-3 sm:last-of-type:pe-3">
+                                    <div class="fi-ta-col-wrp px-3 py-4 text-end">
+                                        <div class="fi-ta-text grid w-full gap-y-1">
+                                            <div class="flex w-max justify-end">
+                                                <div class="fi-ta-text-item inline-flex items-center gap-1.5 px-0 py-0 text-sm leading-6 text-gray-950 dark:text-white font-bold">
+                                                    ${{ number_format($total, 2) }}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="fi-ta-empty-state px-6 py-12">
+                    <div class="fi-ta-empty-state-content mx-auto grid max-w-lg justify-items-center text-center">
+                        <div class="fi-ta-empty-state-description text-sm text-gray-500 dark:text-gray-400">
+                            No cash accounts found
                         </div>
                     </div>
-                @empty
-                    <div class="p-8 text-center">
-                        <p class="text-sm text-gray-500">No cash accounts found</p>
-                    </div>
-                @endforelse
-            </div>
-
-            {{-- Total --}}
-            <div class="bg-gray-50 p-4 border-t border-gray-100">
-                <div class="flex justify-between items-center">
-                    <span class="text-base font-semibold text-gray-900">Total</span>
-                    <span class="text-base font-bold text-gray-900">${{ number_format($this->getCashTotal(), 2) }}</span>
                 </div>
-            </div>
+            @endif
         </div>
     </div>
 

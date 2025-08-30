@@ -7,9 +7,16 @@ use App\Models\Account;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Facades\Filament;
 use Filament\Support\Facades\FilamentView;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class ViewAccountLists extends ViewRecord
 {
+    
     protected static string $resource = SnapshotResource::class;
 
     protected function getViewData(): array
@@ -28,6 +35,7 @@ class ViewAccountLists extends ViewRecord
     {
         return $this->record->date->format('j M Y');
     }
+
 
     public function getCashAccounts(): array
     {
@@ -55,6 +63,7 @@ class ViewAccountLists extends ViewRecord
 
         return $accounts;
     }
+
 
     public function getCashTotal(): float
     {
