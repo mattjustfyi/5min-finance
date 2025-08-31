@@ -107,10 +107,29 @@ class ViewAccountLists extends ViewRecord
 
     public function updateAccountBalances()
     {
-        // Phase 1: Test Livewire action without page reload
+        // Validate input
+        $this->validate([
+            'accountBalances.*' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        // Get current accounts from database
+        $currentAccounts = $this->record->accounts ?? [];
+
+        // Update only the balances that were edited
+        foreach ($this->accountBalances as $accountId => $newBalance) {
+            if (isset($currentAccounts[$accountId])) {
+                $currentAccounts[$accountId]['balance'] = (float) $newBalance;
+            }
+        }
+
+        // Save the updated accounts structure back to database
+        $this->record->update([
+            'accounts' => $currentAccounts,
+        ]);
+
         Notification::make()
-            ->title('Save button clicked!')
-            ->body('This is a Livewire action - no page reload.')
+            ->title('Account balances updated!')
+            ->body('All changes have been saved successfully.')
             ->success()
             ->send();
     }
