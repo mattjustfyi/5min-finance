@@ -105,24 +105,53 @@ class ViewAccountLists extends ViewRecord
         ];
     }
 
+    public function updatedAccountBalances($value, $key)
+    {
+        try {
+            // Validate the specific field
+            $this->validateOnly("accountBalances.{$key}", [
+                'accountBalances.*' => ['required', 'numeric', 'min:0'],
+            ]);
+
+            // Get current accounts from database
+            $currentAccounts = $this->record->accounts ?? [];
+
+            // Update the specific balance
+            if (isset($currentAccounts[$key])) {
+                $currentAccounts[$key]['balance'] = (float) $value;
+                
+                // Save the updated accounts structure back to database
+                $this->record->update([
+                    'accounts' => $currentAccounts,
+                ]);
+            }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Reset the invalid value
+            $this->accountBalances[$key] = $currentAccounts[$key]['balance'] ?? 0;
+            
+            Notification::make()
+                ->title('Invalid balance')
+                ->body('Please enter a valid positive number.')
+                ->danger()
+                ->send();
+        }
+    }
+
     public function updateAccountBalances()
     {
-        // Validate input
+        // Keep this method for any manual save operations if needed
         $this->validate([
             'accountBalances.*' => ['required', 'numeric', 'min:0'],
         ]);
 
-        // Get current accounts from database
         $currentAccounts = $this->record->accounts ?? [];
 
-        // Update only the balances that were edited
         foreach ($this->accountBalances as $accountId => $newBalance) {
             if (isset($currentAccounts[$accountId])) {
                 $currentAccounts[$accountId]['balance'] = (float) $newBalance;
             }
         }
 
-        // Save the updated accounts structure back to database
         $this->record->update([
             'accounts' => $currentAccounts,
         ]);

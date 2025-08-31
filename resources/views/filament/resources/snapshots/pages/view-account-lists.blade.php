@@ -63,7 +63,7 @@
                                                         type="number"
                                                         step="0.01"
                                                         min="0"
-                                                        wire:model.live="accountBalances.{{ $account['id'] }}"
+                                                        wire:model.blur="accountBalances.{{ $account['id'] }}"
                                                         class="text-right"
                                                         style="min-width: 120px;"
                                                     />
