@@ -112,17 +112,6 @@
                 </div>
             @endif
 
-            @if(count($accounts) > 0)
-                <div class="mt-6">
-                    <x-filament::button 
-                        wire:click="updateAccountBalances"
-                        color="primary"
-                        size="sm"
-                    >
-                        Save Changes
-                    </x-filament::button>
-                </div>
-            @endif
         </div>
     </div>
 
