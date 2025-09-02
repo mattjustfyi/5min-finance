@@ -32,11 +32,18 @@
                                         </span>
                                     </span>
                                 </th>
+                                <th class="fi-ta-header-cell">
+                                    <span>
+                                        <span class="fi-ta-header-cell-label">
+                                            Actions
+                                        </span>
+                                    </span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($accounts as $account)
-                                <tr class="fi-ta-row">
+                                <tr class="fi-ta-row" wire:key="account-row-{{ $account['id'] }}">
                                     <td class="fi-ta-cell">
                                         <div class="fi-ta-col-wrp">
                                             <div class="fi-ta-text">
@@ -57,11 +64,19 @@
                                                         type="number"
                                                         step="0.01"
                                                         min="0"
+                                                        wire:key="account-input-{{ $account['id'] }}"
                                                         wire:model.blur="accountBalances.{{ $account['id'] }}"
                                                         class="text-right"
                                                         style="min-width: 120px;"
                                                     />
                                                 </x-filament::input.wrapper>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="fi-ta-cell">
+                                        <div class="fi-ta-col-wrp">
+                                            <div class="flex justify-end">
+                                                {{ ($this->deleteAccountAction)(['accountId' => $account['id'], 'accountName' => $account['name']]) }}
                                             </div>
                                         </div>
                                     </td>
@@ -91,6 +106,9 @@
                                             </div>
                                         </div>
                                     </div>
+                                </td>
+                                <td class="fi-ta-cell">
+                                    {{-- Empty cell for actions column --}}
                                 </td>
                             </tr>
                         </tbody>
