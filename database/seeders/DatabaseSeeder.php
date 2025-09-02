@@ -72,7 +72,7 @@ class DatabaseSeeder extends Seeder
         // Snapshot 1: With goals, debts, and accounts (inserted first, so older date)
         $snapshot1 = Snapshot::create([
             'user_id' => $testUser->id,
-            'date' => now()->subDays(30)->format('Y-m-d'),
+            'date' => now()->subDays(35)->format('Y-m-d'),
             'notes' => 'Test snapshot with all data',
             'accounts' => [],
             'goals' => [],
@@ -127,16 +127,36 @@ class DatabaseSeeder extends Seeder
         // Snapshot 2: Empty snapshot (inserted second, so newer date)
         Snapshot::create([
             'user_id' => $testUser->id,
-            'date' => now()->subDays(15)->format('Y-m-d'),
+            'date' => now()->subDays(20)->format('Y-m-d'),
             'notes' => 'Test snapshot with no data',
             'accounts' => [],
             'goals' => [],
             'debts' => [],
         ]);
 
-        // Give the test user some additional random snapshots
-        Snapshot::factory()->count(3)->create([
-            'user_id' => $testUser->id,
-        ]);
+        // Give the test user some additional snapshots with all accounts and unique dates
+        $additionalDates = [
+            now()->subDays(10)->format('Y-m-d'),
+            now()->subDays(5)->format('Y-m-d'),
+            now()->format('Y-m-d'),
+        ];
+        
+        foreach ($additionalDates as $date) {
+            $accountsData = [];
+            foreach ($userAccounts as $account) {
+                $accountsData[$account->id] = [
+                    'balance' => rand(1000, 50000) / 100,
+                ];
+            }
+            
+            Snapshot::create([
+                'user_id' => $testUser->id,
+                'date' => $date,
+                'notes' => 'Additional test snapshot',
+                'accounts' => $accountsData,
+                'goals' => [],
+                'debts' => [],
+            ]);
+        }
     }
 }
