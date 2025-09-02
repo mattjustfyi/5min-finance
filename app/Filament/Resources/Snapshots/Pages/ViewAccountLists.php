@@ -16,9 +16,18 @@ use Illuminate\Support\Collection;
 use Filament\Notifications\Notification;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
+use Filament\Actions\Concerns\InteractsWithActions;
+use Filament\Actions\Contracts\HasActions;
+use Filament\Schemas\Concerns\InteractsWithSchemas;
+use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Actions\Action;
+use Filament\Forms\Components\TextInput;
+use App\Services\AccountService;
 
-class ViewAccountLists extends ViewRecord
+class ViewAccountLists extends ViewRecord implements HasActions, HasSchemas
 {
+    use InteractsWithActions;
+    use InteractsWithSchemas;
     
     protected static string $resource = SnapshotResource::class;
 
@@ -164,41 +173,92 @@ class ViewAccountLists extends ViewRecord
             ->send();
     }
 
-    #[On('open-modal')]
-    public function openAddAccountModal()
-    {
-        // Dispatch event to open the modal
-        $this->dispatch('open-account-modal');
-    }
 
-    #[On('account-created')]
-    public function handleAccountCreated($accountId)
+    public function addAccountAction(): Action
     {
-        // Add the new account to the snapshot with balance 0
-        $currentAccounts = $this->record->accounts ?? [];
-        
-        // Add new account with 0 balance to snapshot
-        $currentAccounts[$accountId] = [
-            'balance' => 0.0,
-        ];
-        
-        // Update the snapshot
-        $this->record->update([
-            'accounts' => $currentAccounts,
-        ]);
-        
-        // Initialize the balance in our component state
-        $this->accountBalances[$accountId] = 0.0;
-        
-        // Refresh the computed properties
-        unset($this->cashTotal);
-        
-        // Show success notification
-        $account = Account::find($accountId);
-        Notification::make()
-            ->title('Account added to snapshot!')
-            ->body("'{$account->name}' has been added to this snapshot with a balance of 0.")
-            ->success()
-            ->send();
+        return Action::make('addAccount')
+            ->label('Add')
+            ->color('primary')
+            ->size('xs')
+            ->modalHeading('Add New Account')
+            ->modalDescription('Create a new account to track your finances.')
+            ->schema([
+                TextInput::make('name')
+                    ->label('Account Name')
+                    ->placeholder('Enter account name')
+                    ->required()
+                    ->minLength(1)
+                    ->maxLength(255)
+                    ->unique('accounts', 'name', modifyRuleUsing: function ($rule) {
+                        return $rule->where('user_id', Filament::auth()->id())->whereNull('deleted_at');
+                    })
+                    ->validationMessages([
+                        'required' => 'Account name is required.',
+                        'min' => 'Account name must be at least 1 character.',
+                        'unique' => 'You already have an account with this name.',
+                    ]),
+                
+                TextInput::make('currency')
+                    ->label('Currency')
+                    ->placeholder('USD')
+                    ->required()
+                    ->length(3)
+                    ->extraAttributes(['style' => 'text-transform: uppercase'])
+                    ->validationMessages([
+                        'required' => 'Currency is required.',
+                        'size' => 'Currency must be exactly 3 characters (e.g., USD, EUR).',
+                    ])
+                    ->helperText('3-letter currency code (e.g., USD, EUR, GBP)'),
+                
+                TextInput::make('conversionRate')
+                    ->label('Conversion Rate')
+                    ->numeric()
+                    ->step(0.0001)
+                    ->minValue(0.0001)
+                    ->maxValue(999999.9999)
+                    ->placeholder('1.0000')
+                    ->required()
+                    ->default(1.0)
+                    ->validationMessages([
+                        'required' => 'Conversion rate is required.',
+                        'numeric' => 'Conversion rate must be a number.',
+                        'min' => 'Conversion rate must be greater than 0.',
+                    ])
+                    ->helperText('Rate to convert this currency to your base currency (1.0 for base currency)'),
+            ])
+            ->action(function (array $data): void {
+                try {
+                    $accountService = app(AccountService::class);
+                    
+                    $account = $accountService->createAccount([
+                        'name' => $data['name'],
+                        'currency' => strtoupper($data['currency']),
+                        'conversion_rate' => $data['conversionRate'],
+                    ], Filament::auth()->id());
+
+                    // Add the new account to the snapshot with balance 0
+                    $currentAccounts = $this->record->accounts ?? [];
+                    $currentAccounts[$account->id] = ['balance' => 0.0];
+                    
+                    $this->record->update(['accounts' => $currentAccounts]);
+                    $this->accountBalances[$account->id] = 0.0;
+                    
+                    // Refresh computed properties
+                    unset($this->cashTotal);
+
+                    Notification::make()
+                        ->title('Account created and added!')
+                        ->body("Account '{$account->name}' has been created and added to this snapshot with a balance of 0.")
+                        ->success()
+                        ->send();
+
+                } catch (\Exception $e) {
+                    Notification::make()
+                        ->title('Error creating account')
+                        ->body('An unexpected error occurred. Please try again.')
+                        ->danger()
+                        ->send();
+                }
+            });
     }
 }

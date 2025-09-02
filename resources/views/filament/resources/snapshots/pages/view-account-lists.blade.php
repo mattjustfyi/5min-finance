@@ -4,14 +4,7 @@
         <div>
             <div>
                 <h2 class="!text-xl !font-bold !text-gray-900 dark:!text-white">💰 Cash</h2>
-                <x-filament::button
-                    size="xs"
-                    color="primary"
-                    class=""
-                    x-on:click="$wire.dispatch('open-modal')"
-                >
-                    Add
-                </x-filament::button>
+                {{ $this->addAccountAction }}
             </div>
 
             @php
@@ -116,6 +109,5 @@
         </div>
     </div>
 
-    {{-- Include the Add Account Modal --}}
-    <livewire:add-account-modal />
+    <x-filament-actions::modals />
 </x-filament-panels::page>
