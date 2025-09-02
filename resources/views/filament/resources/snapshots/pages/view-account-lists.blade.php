@@ -32,6 +32,13 @@
                                         </span>
                                     </span>
                                 </th>
+                                <th class="fi-ta-header-cell">
+                                    <span>
+                                        <span class="fi-ta-header-cell-label">
+                                            Actions
+                                        </span>
+                                    </span>
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -65,6 +72,13 @@
                                             </div>
                                         </div>
                                     </td>
+                                    <td class="fi-ta-cell">
+                                        <div class="fi-ta-col-wrp">
+                                            <div class="flex justify-end">
+                                                {{ ($this->deleteAccountAction)(['accountId' => $account['id'], 'accountName' => $account['name']]) }}
+                                            </div>
+                                        </div>
+                                    </td>
                                 </tr>
                             @endforeach
 
@@ -91,6 +105,9 @@
                                             </div>
                                         </div>
                                     </div>
+                                </td>
+                                <td class="fi-ta-cell">
+                                    {{-- Empty cell for actions column --}}
                                 </td>
                             </tr>
                         </tbody>
