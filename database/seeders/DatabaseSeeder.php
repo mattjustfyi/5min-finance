@@ -33,9 +33,29 @@ class DatabaseSeeder extends Seeder
             'password' => bcrypt('password'), // Easy to remember: "password"
         ]);
 
-        // Give the test user some specific accounts
-        Account::factory()->count(3)->create([
+        // Give the test user 3 specific cash accounts
+        Account::create([
             'user_id' => $testUser->id,
+            'name' => 'Primary Checking',
+            'currency' => 'USD',
+            'conversion_rate' => 1.0000,
+            'retirement_type' => \App\Enums\RetirementType::NON_RETIREMENT,
+        ]);
+        
+        Account::create([
+            'user_id' => $testUser->id,
+            'name' => 'Savings Account',
+            'currency' => 'USD',
+            'conversion_rate' => 1.0000,
+            'retirement_type' => \App\Enums\RetirementType::NON_RETIREMENT,
+        ]);
+        
+        Account::create([
+            'user_id' => $testUser->id,
+            'name' => 'Emergency Fund',
+            'currency' => 'USD',
+            'conversion_rate' => 1.0000,
+            'retirement_type' => \App\Enums\RetirementType::NON_RETIREMENT,
         ]);
 
         // Give the test user some specific allocations
@@ -47,8 +67,75 @@ class DatabaseSeeder extends Seeder
             'user_id' => $testUser->id,
         ]);
 
-        // Give the test user some snapshots
-        Snapshot::factory()->count(5)->create([
+        // Create specific snapshots for the test user
+        
+        // Snapshot 1: With goals, debts, and accounts (inserted first, so older date)
+        $snapshot1 = Snapshot::create([
+            'user_id' => $testUser->id,
+            'date' => now()->subDays(30)->format('Y-m-d'),
+            'notes' => 'Test snapshot with all data',
+            'accounts' => [],
+            'goals' => [],
+            'debts' => [],
+        ]);
+
+        // Get the user's data to populate snapshot 1
+        $userAccounts = Account::where('user_id', $testUser->id)->get();
+        $userGoals = GoalAllocation::where('user_id', $testUser->id)->get();
+        $userDebts = DebtAllocation::where('user_id', $testUser->id)->get();
+
+        // Populate accounts data
+        $accountsData = [];
+        foreach ($userAccounts as $account) {
+            $accountsData[$account->id] = [
+                'balance' => rand(1000, 50000) / 100, // Random balance
+            ];
+        }
+
+        // Populate goals data
+        $goalsData = [];
+        foreach ($userGoals as $goal) {
+            $goalsData[] = [
+                'goalId' => $goal->id,
+                'targetAmount' => rand(5000, 50000) / 100,
+                'deductions' => [
+                    [
+                        'amount' => rand(100, 1000) / 100,
+                        'description' => 'Sample deduction',
+                        'dateOccurred' => now()->subDays(15)->format('Y-m-d'),
+                    ],
+                ],
+            ];
+        }
+
+        // Populate debts data
+        $debtsData = [];
+        foreach ($userDebts as $debt) {
+            $debtsData[] = [
+                'debtId' => $debt->id,
+                'amount' => rand(500, 5000) / 100,
+            ];
+        }
+
+        // Update snapshot 1 with all data
+        $snapshot1->update([
+            'accounts' => $accountsData,
+            'goals' => $goalsData,
+            'debts' => $debtsData,
+        ]);
+
+        // Snapshot 2: Empty snapshot (inserted second, so newer date)
+        Snapshot::create([
+            'user_id' => $testUser->id,
+            'date' => now()->subDays(15)->format('Y-m-d'),
+            'notes' => 'Test snapshot with no data',
+            'accounts' => [],
+            'goals' => [],
+            'debts' => [],
+        ]);
+
+        // Give the test user some additional random snapshots
+        Snapshot::factory()->count(3)->create([
             'user_id' => $testUser->id,
         ]);
     }
