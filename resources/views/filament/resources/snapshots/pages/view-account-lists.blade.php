@@ -4,10 +4,11 @@
         <div>
             <div>
                 <h2 class="!text-xl !font-bold !text-gray-900 dark:!text-white">💰 Cash</h2>
-                <x-filament::button 
-                    size="xs" 
+                <x-filament::button
+                    size="xs"
                     color="primary"
                     class=""
+                    x-on:click="$wire.dispatch('open-modal')"
                 >
                     Add
                 </x-filament::button>
@@ -17,7 +18,7 @@
                 $accounts = $this->getCashAccounts();
                 $total = $this->getCashTotal();
             @endphp
-            
+
             @if(count($accounts) > 0)
                 {{-- Filament-styled table --}}
                 <div class="fi-ta-ctn">
@@ -73,7 +74,7 @@
                                     </td>
                                 </tr>
                             @endforeach
-                            
+
                             {{-- Total Row --}}
                             <tr class="fi-ta-row">
                                 <td class="fi-ta-cell">
@@ -115,16 +116,6 @@
         </div>
     </div>
 
-    <style>
-        /* Mobile-first responsive overrides */
-        @media (max-width: 640px) {
-            .fi-page {
-                padding: 0 !important;
-            }
-            
-            .fi-page > div {
-                padding: 0 !important;
-            }
-        }
-    </style>
+    {{-- Include the Add Account Modal --}}
+    <livewire:add-account-modal />
 </x-filament-panels::page>

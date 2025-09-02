@@ -8,6 +8,7 @@ use Filament\Facades\Filament;
 use Filament\Notifications\Notification;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Livewire\Attributes\On;
 
 class AddAccountModal extends Component
 {
@@ -40,6 +41,12 @@ class AddAccountModal extends Component
             'conversionRate.numeric' => 'Conversion rate must be a number.',
             'conversionRate.min' => 'Conversion rate must be greater than 0.',
         ];
+    }
+
+    #[On('open-account-modal')]
+    public function handleOpenModal()
+    {
+        $this->openModal();
     }
 
     public function openModal()

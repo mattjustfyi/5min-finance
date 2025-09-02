@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Filament\Notifications\Notification;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
 
 class ViewAccountLists extends ViewRecord
 {
@@ -159,6 +160,44 @@ class ViewAccountLists extends ViewRecord
         Notification::make()
             ->title('Account balances updated!')
             ->body('All changes have been saved successfully.')
+            ->success()
+            ->send();
+    }
+
+    #[On('open-modal')]
+    public function openAddAccountModal()
+    {
+        // Dispatch event to open the modal
+        $this->dispatch('open-account-modal');
+    }
+
+    #[On('account-created')]
+    public function handleAccountCreated($accountId)
+    {
+        // Add the new account to the snapshot with balance 0
+        $currentAccounts = $this->record->accounts ?? [];
+        
+        // Add new account with 0 balance to snapshot
+        $currentAccounts[$accountId] = [
+            'balance' => 0.0,
+        ];
+        
+        // Update the snapshot
+        $this->record->update([
+            'accounts' => $currentAccounts,
+        ]);
+        
+        // Initialize the balance in our component state
+        $this->accountBalances[$accountId] = 0.0;
+        
+        // Refresh the computed properties
+        unset($this->cashTotal);
+        
+        // Show success notification
+        $account = Account::find($accountId);
+        Notification::make()
+            ->title('Account added to snapshot!')
+            ->body("'{$account->name}' has been added to this snapshot with a balance of 0.")
             ->success()
             ->send();
     }
