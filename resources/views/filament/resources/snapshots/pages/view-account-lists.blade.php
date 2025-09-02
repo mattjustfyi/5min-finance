@@ -43,7 +43,7 @@
                         </thead>
                         <tbody>
                             @foreach($accounts as $account)
-                                <tr class="fi-ta-row">
+                                <tr class="fi-ta-row" wire:key="account-row-{{ $account['id'] }}">
                                     <td class="fi-ta-cell">
                                         <div class="fi-ta-col-wrp">
                                             <div class="fi-ta-text">
@@ -64,6 +64,7 @@
                                                         type="number"
                                                         step="0.01"
                                                         min="0"
+                                                        wire:key="account-input-{{ $account['id'] }}"
                                                         wire:model.blur="accountBalances.{{ $account['id'] }}"
                                                         class="text-right"
                                                         style="min-width: 120px;"
