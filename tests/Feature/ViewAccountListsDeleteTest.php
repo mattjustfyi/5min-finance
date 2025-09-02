@@ -130,3 +130,92 @@ it('updates cash total after account deletion', function () {
     // Total should now be 200 (just account2)
     expect($component->get('cashTotal'))->toBe(200.0);
 });
+
+it('prevents deletion when newer snapshots contain the account', function () {
+    $this->actingAs($this->user);
+    
+    // Create a newer snapshot with the same account
+    $newerSnapshot = Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->addDay(),
+        'accounts' => [
+            $this->account1->id => ['balance' => 500.00],
+        ],
+        'goals' => [],
+        'debts' => [],
+    ]);
+    
+    // Try to delete from the older snapshot
+    $component = Livewire::test(ViewAccountLists::class, ['record' => $this->snapshot->id]);
+    $component->callAction('deleteAccount', ['accountId' => $this->account1->id, 'accountName' => $this->account1->name]);
+    
+    // Account should still be in the snapshot (not deleted)
+    $this->snapshot->refresh();
+    expect($this->snapshot->accounts)->toHaveKey($this->account1->id);
+    
+    // Account should not be soft deleted
+    $this->account1->refresh();
+    expect($this->account1->trashed())->toBeFalse();
+    
+    // Should show error notification (we can't directly test notifications in Livewire tests)
+    // but we can verify the account wasn't deleted as evidence the validation worked
+});
+
+it('allows deletion when newer snapshots exist but do not contain the account', function () {
+    $this->actingAs($this->user);
+    
+    // Create a newer snapshot with a different account
+    $otherAccount = Account::factory()->create([
+        'user_id' => $this->user->id,
+        'retirement_type' => 'non_retirement'
+    ]);
+    
+    $newerSnapshot = Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->addDay(),
+        'accounts' => [
+            $otherAccount->id => ['balance' => 500.00],
+        ],
+        'goals' => [],
+        'debts' => [],
+    ]);
+    
+    // Delete should succeed since newer snapshot doesn't contain our account
+    $component = Livewire::test(ViewAccountLists::class, ['record' => $this->snapshot->id]);
+    $component->callAction('deleteAccount', ['accountId' => $this->account1->id, 'accountName' => $this->account1->name]);
+    
+    // Account should be removed from snapshot
+    $this->snapshot->refresh();
+    expect($this->snapshot->accounts)->not->toHaveKey($this->account1->id);
+    
+    // Account should be soft deleted
+    $this->account1->refresh();
+    expect($this->account1->trashed())->toBeTrue();
+});
+
+it('allows deletion when no newer snapshots exist', function () {
+    $this->actingAs($this->user);
+    
+    // Create an older snapshot (this should not block deletion)
+    $olderSnapshot = Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => [
+            $this->account1->id => ['balance' => 50.00],
+        ],
+        'goals' => [],
+        'debts' => [],
+    ]);
+    
+    // Delete should succeed
+    $component = Livewire::test(ViewAccountLists::class, ['record' => $this->snapshot->id]);
+    $component->callAction('deleteAccount', ['accountId' => $this->account1->id, 'accountName' => $this->account1->name]);
+    
+    // Account should be removed from snapshot
+    $this->snapshot->refresh();
+    expect($this->snapshot->accounts)->not->toHaveKey($this->account1->id);
+    
+    // Account should be soft deleted
+    $this->account1->refresh();
+    expect($this->account1->trashed())->toBeTrue();
+});

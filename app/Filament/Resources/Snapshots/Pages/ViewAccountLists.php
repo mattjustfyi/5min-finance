@@ -23,6 +23,7 @@ use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
 use App\Services\AccountService;
+use App\Services\SnapshotService;
 use Illuminate\Support\Facades\DB;
 
 class ViewAccountLists extends ViewRecord implements HasActions, HasSchemas
@@ -277,6 +278,21 @@ class ViewAccountLists extends ViewRecord implements HasActions, HasSchemas
             ->action(function (array $arguments): void {
                 try {
                     $accountId = $arguments['accountId'];
+                    $snapshotService = app(SnapshotService::class);
+                    
+                    // Check if newer snapshots contain this account
+                    if ($snapshotService->hasNewerSnapshotsWithAccount($accountId, $this->record->date, Filament::auth()->id())) {
+                        $newerSnapshots = $snapshotService->getNewerSnapshotsWithAccount($accountId, $this->record->date, Filament::auth()->id());
+                        $dates = $newerSnapshots->pluck('date')->map(fn($date) => $date->format('M j, Y'))->join(', ');
+                        
+                        Notification::make()
+                            ->title('Cannot delete account')
+                            ->body("This account is used in newer snapshots ({$dates}). Please remove it from those snapshots first, working from newest to oldest.")
+                            ->danger()
+                            ->send();
+                        
+                        return;
+                    }
                     
                     DB::transaction(function () use ($accountId) {
                         // Remove from snapshot accounts
