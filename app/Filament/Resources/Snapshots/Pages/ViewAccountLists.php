@@ -33,6 +33,14 @@ class ViewAccountLists extends ViewRecord implements HasActions, HasSchemas
     
     protected static string $resource = SnapshotResource::class;
 
+    protected function getActions(): array
+    {
+        return [
+            $this->addAccountAction(),
+            $this->deleteAccountAction(),
+        ];
+    }
+
     public $accountBalances = [];
 
     public function mount($record): void
@@ -265,6 +273,60 @@ class ViewAccountLists extends ViewRecord implements HasActions, HasSchemas
             });
     }
 
+    public function deleteAccount($accountId, $accountName)
+    {
+        try {
+            $snapshotService = app(SnapshotService::class);
+            
+            // Check if newer snapshots contain this account
+            if ($snapshotService->hasNewerSnapshotsWithAccount($accountId, $this->record->date, Filament::auth()->id())) {
+                $newerSnapshots = $snapshotService->getNewerSnapshotsWithAccount($accountId, $this->record->date, Filament::auth()->id());
+                $dates = $newerSnapshots->pluck('date')->map(fn($date) => $date->format('M j, Y'))->join(', ');
+                
+                Notification::make()
+                    ->title('Cannot delete account')
+                    ->body("This account is used in newer snapshots ({$dates}). Please remove it from those snapshots first, working from newest to oldest.")
+                    ->danger()
+                    ->send();
+                
+                return;
+            }
+            
+            DB::transaction(function () use ($accountId) {
+                // Remove from snapshot accounts
+                $currentAccounts = $this->record->accounts ?? [];
+                unset($currentAccounts[$accountId]);
+                
+                // Update snapshot
+                $this->record->update(['accounts' => $currentAccounts]);
+                
+                // Soft delete the account (only if user owns it)
+                Account::where('id', $accountId)
+                    ->where('user_id', Filament::auth()->id())
+                    ->delete();
+            });
+
+            // Remove from local state
+            unset($this->accountBalances[$accountId]);
+            
+            // Refresh computed properties
+            unset($this->cashTotal);
+
+            Notification::make()
+                ->title('Account deleted')
+                ->body('The account has been deleted successfully.')
+                ->success()
+                ->send();
+
+        } catch (\Exception $e) {
+            Notification::make()
+                ->title('Error deleting account')
+                ->body('An unexpected error occurred. Please try again.')
+                ->danger()
+                ->send();
+        }
+    }
+
     public function deleteAccountAction(): Action
     {
         return Action::make('deleteAccount')
@@ -276,57 +338,7 @@ class ViewAccountLists extends ViewRecord implements HasActions, HasSchemas
             ->modalHeading('Delete Account')
             ->modalDescription(fn (array $arguments) => "Are you sure you want to delete the account? This action cannot be undone.")
             ->action(function (array $arguments): void {
-                try {
-                    $accountId = $arguments['accountId'];
-                    $snapshotService = app(SnapshotService::class);
-                    
-                    // Check if newer snapshots contain this account
-                    if ($snapshotService->hasNewerSnapshotsWithAccount($accountId, $this->record->date, Filament::auth()->id())) {
-                        $newerSnapshots = $snapshotService->getNewerSnapshotsWithAccount($accountId, $this->record->date, Filament::auth()->id());
-                        $dates = $newerSnapshots->pluck('date')->map(fn($date) => $date->format('M j, Y'))->join(', ');
-                        
-                        Notification::make()
-                            ->title('Cannot delete account')
-                            ->body("This account is used in newer snapshots ({$dates}). Please remove it from those snapshots first, working from newest to oldest.")
-                            ->danger()
-                            ->send();
-                        
-                        return;
-                    }
-                    
-                    DB::transaction(function () use ($accountId) {
-                        // Remove from snapshot accounts
-                        $currentAccounts = $this->record->accounts ?? [];
-                        unset($currentAccounts[$accountId]);
-                        
-                        // Update snapshot
-                        $this->record->update(['accounts' => $currentAccounts]);
-                        
-                        // Soft delete the account (only if user owns it)
-                        Account::where('id', $accountId)
-                            ->where('user_id', Filament::auth()->id())
-                            ->delete();
-                    });
-
-                    // Remove from local state
-                    unset($this->accountBalances[$accountId]);
-                    
-                    // Refresh computed properties
-                    unset($this->cashTotal);
-
-                    Notification::make()
-                        ->title('Account deleted')
-                        ->body('The account has been deleted successfully.')
-                        ->success()
-                        ->send();
-
-                } catch (\Exception $e) {
-                    Notification::make()
-                        ->title('Error deleting account')
-                        ->body('An unexpected error occurred. Please try again.')
-                        ->danger()
-                        ->send();
-                }
+                $this->deleteAccount($arguments['accountId'], $arguments['accountName']);
             });
     }
 }

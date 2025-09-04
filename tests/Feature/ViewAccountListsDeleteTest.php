@@ -43,7 +43,7 @@ it('can delete an account from snapshot and soft delete account', function () {
     
     // Delete the account
     Livewire::test(ViewAccountLists::class, ['record' => $this->snapshot->id])
-        ->callAction('deleteAccount', ['accountId' => $this->account1->id, 'accountName' => $this->account1->name]);
+        ->call('deleteAccount', $this->account1->id, $this->account1->name);
     
     // Verify account removed from snapshot
     $this->snapshot->refresh();
@@ -65,7 +65,7 @@ it('updates account balances state after deletion', function () {
     expect($component->get('accountBalances'))->toHaveKey($this->account2->id);
     
     // Delete account
-    $component->callAction('deleteAccount', ['accountId' => $this->account1->id, 'accountName' => $this->account1->name]);
+    $component->call('deleteAccount', $this->account1->id, $this->account1->name);
     
     // Verify balance state updated
     expect($component->get('accountBalances'))->not->toHaveKey($this->account1->id);
@@ -88,7 +88,7 @@ it('only allows user to delete their own accounts', function () {
     
     // Try to delete other user's account
     Livewire::test(ViewAccountLists::class, ['record' => $this->snapshot->id])
-        ->callAction('deleteAccount', ['accountId' => $otherAccount->id, 'accountName' => $otherAccount->name]);
+        ->call('deleteAccount', $otherAccount->id, $otherAccount->name);
     
     // Other user's account should not be soft deleted
     $otherAccount->refresh();
@@ -105,8 +105,8 @@ it('handles empty accounts array after all deletions', function () {
     $component = Livewire::test(ViewAccountLists::class, ['record' => $this->snapshot->id]);
     
     // Delete both accounts
-    $component->callAction('deleteAccount', ['accountId' => $this->account1->id, 'accountName' => $this->account1->name]);
-    $component->callAction('deleteAccount', ['accountId' => $this->account2->id, 'accountName' => $this->account2->name]);
+    $component->call('deleteAccount', $this->account1->id, $this->account1->name);
+    $component->call('deleteAccount', $this->account2->id, $this->account2->name);
     
     // Verify empty accounts array
     $this->snapshot->refresh();
@@ -125,7 +125,7 @@ it('updates cash total after account deletion', function () {
     expect($component->get('cashTotal'))->toBe(300.0);
     
     // Delete one account
-    $component->callAction('deleteAccount', ['accountId' => $this->account1->id, 'accountName' => $this->account1->name]);
+    $component->call('deleteAccount', $this->account1->id, $this->account1->name);
     
     // Total should now be 200 (just account2)
     expect($component->get('cashTotal'))->toBe(200.0);
@@ -147,7 +147,7 @@ it('prevents deletion when newer snapshots contain the account', function () {
     
     // Try to delete from the older snapshot
     $component = Livewire::test(ViewAccountLists::class, ['record' => $this->snapshot->id]);
-    $component->callAction('deleteAccount', ['accountId' => $this->account1->id, 'accountName' => $this->account1->name]);
+    $component->call('deleteAccount', $this->account1->id, $this->account1->name);
     
     // Account should still be in the snapshot (not deleted)
     $this->snapshot->refresh();
@@ -182,7 +182,7 @@ it('allows deletion when newer snapshots exist but do not contain the account', 
     
     // Delete should succeed since newer snapshot doesn't contain our account
     $component = Livewire::test(ViewAccountLists::class, ['record' => $this->snapshot->id]);
-    $component->callAction('deleteAccount', ['accountId' => $this->account1->id, 'accountName' => $this->account1->name]);
+    $component->call('deleteAccount', $this->account1->id, $this->account1->name);
     
     // Account should be removed from snapshot
     $this->snapshot->refresh();
@@ -209,7 +209,7 @@ it('allows deletion when no newer snapshots exist', function () {
     
     // Delete should succeed
     $component = Livewire::test(ViewAccountLists::class, ['record' => $this->snapshot->id]);
-    $component->callAction('deleteAccount', ['accountId' => $this->account1->id, 'accountName' => $this->account1->name]);
+    $component->call('deleteAccount', $this->account1->id, $this->account1->name);
     
     // Account should be removed from snapshot
     $this->snapshot->refresh();

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,7 +42,16 @@ class Snapshot extends Model
         });
     }
 
-    private function validateUniqueEntries(): void
+
+    // Ensure that only a date is saved in the database. Even though the migration uses date(), SQLite doesn't
+    // enforce this. It's essentially a text column AFAIK.
+    protected function date(): Attribute
+    {
+        return Attribute::make(
+            set: fn ($value) => Carbon::parse($value)->toDateString(),
+        );
+    }    private function validateUniqueEntries(): void
+
     {
         // Validate unique account IDs
         if (is_array($this->accounts) && !empty($this->accounts)) {

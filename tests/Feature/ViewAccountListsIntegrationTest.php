@@ -32,28 +32,35 @@ it('shows empty state when no accounts exist', function () {
         ->assertSee('No cash accounts found');
 });
 
-it('can handle open modal event', function () {
-    Livewire::test(ViewAccountLists::class, ['record' => $this->snapshot->id])
-        ->dispatch('open-modal')
-        ->assertDispatched('open-account-modal');
-});
-
-it('can handle account created event and update snapshot', function () {
-    // Create an account
-    $account = Account::factory()->create([
-        'user_id' => $this->user->id,
-        'name' => 'Test Account',
-        'retirement_type' => 'non_retirement',
-    ]);
-    
-    // Test the account-created event handler
+it('has add account action available', function () {
     $component = Livewire::test(ViewAccountLists::class, ['record' => $this->snapshot->id]);
     
-    // Verify initial state
+    // Verify the addAccountAction method exists and returns an Action
+    $action = $component->instance()->addAccountAction();
+    expect($action)->toBeInstanceOf(\Filament\Actions\Action::class);
+    expect($action->getName())->toBe('addAccount');
+});
+
+it('can create account through add account action', function () {
+    $component = Livewire::test(ViewAccountLists::class, ['record' => $this->snapshot->id]);
+    
+    // Verify initial state - no accounts in snapshot
     expect($this->snapshot->fresh()->accounts)->toBeEmpty();
     
-    // Trigger the account-created event
-    $component->dispatch('account-created', accountId: $account->id);
+    // Call the addAccount action with form data
+    $component->callAction('addAccount', [
+        'name' => 'Test Savings Account',
+        'currency' => 'USD',
+        'conversionRate' => 1.0,
+    ]);
+    
+    // Check that an account was created
+    $account = Account::where('name', 'Test Savings Account')
+        ->where('user_id', $this->user->id)
+        ->first();
+    expect($account)->not->toBeNull();
+    expect($account->currency)->toBe('USD');
+    expect((float) $account->conversion_rate)->toBe(1.0);
     
     // Check that the snapshot was updated
     $updatedSnapshot = $this->snapshot->fresh();
