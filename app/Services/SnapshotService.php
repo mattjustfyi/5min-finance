@@ -18,14 +18,15 @@ class SnapshotService
      */
     public function hasNewerSnapshotsWithAccount(int $accountId, Carbon $currentDate, int $userId): bool
     {
-        return Snapshot::where('user_id', $userId)
+        $snapshots = Snapshot::where('user_id', $userId)
             ->where('date', '>', $currentDate)
             ->whereNotNull('accounts')
-            ->get()
-            ->filter(function (Snapshot $snapshot) use ($accountId) {
-                $accounts = $snapshot->accounts ?? [];
-                return is_array($accounts) && array_key_exists($accountId, $accounts);
-            })
+            ->get();
+
+        return $snapshots->filter(function (Snapshot $snapshot) use ($accountId) {
+            $accounts = $snapshot->accounts ?? [];
+            return is_array($accounts) && array_key_exists($accountId, $accounts);
+        })
             ->isNotEmpty();
     }
 
@@ -48,5 +49,35 @@ class SnapshotService
                 $accounts = $snapshot->accounts ?? [];
                 return is_array($accounts) && array_key_exists($accountId, $accounts);
             });
+    }
+
+    /**
+     * Get accounts from the previous snapshot for the specified user.
+     *
+     * @param int $userId
+     * @param Carbon|null $beforeDate
+     * @return array
+     */
+    public function getPreviousSnapshotAccounts(int $userId, ?Carbon $beforeDate = null): array
+    {
+        $query = Snapshot::where('user_id', $userId);
+
+        if ($beforeDate) {
+//            The date needs to have time stripped because SQLite essentially does a string comparison for dates. So
+            // 2022-01-01 < 2022-01-01 00:00:00 is actually TRUE, when it should be FALSE.
+            $query->where('date', '<', $beforeDate->format('Y-m-d'));
+        }
+
+        $previousSnapshot = $query->orderBy('date', 'desc')->first();
+
+        if (!$previousSnapshot) {
+            return [];
+        }
+
+        if (!is_array($previousSnapshot->accounts) || empty($previousSnapshot->accounts)) {
+            return [];
+        }
+
+        return $previousSnapshot->accounts;
     }
 }

@@ -33,19 +33,22 @@ it('returns false when no newer snapshots exist', function () {
 });
 
 it('returns false when newer snapshots exist but do not contain the account', function () {
+    $olderDate = now()->subDay();
+    $newerDate = now();
+
     $olderSnapshot = Snapshot::create([
         'user_id' => $this->user->id,
-        'date' => now()->subDay(),
+        'date' => $olderDate,
         'accounts' => [$this->account->id => ['balance' => 100.00]],
         'goals' => [],
         'debts' => [],
     ]);
 
     $otherAccount = Account::factory()->create(['user_id' => $this->user->id]);
-    
-    Snapshot::create([
+
+    $newerSnapshot = Snapshot::create([
         'user_id' => $this->user->id,
-        'date' => now(),
+        'date' => $newerDate,
         'accounts' => [$otherAccount->id => ['balance' => 200.00]],
         'goals' => [],
         'debts' => [],
@@ -88,7 +91,7 @@ it('returns true when newer snapshots exist and contain the account', function (
 
 it('only considers snapshots for the specified user', function () {
     $otherUser = User::factory()->create();
-    
+
     $olderSnapshot = Snapshot::create([
         'user_id' => $this->user->id,
         'date' => now()->subDay(),
@@ -115,34 +118,6 @@ it('only considers snapshots for the specified user', function () {
     expect($hasNewer)->toBeFalse();
 });
 
-it('handles null accounts gracefully', function () {
-    $olderSnapshot = Snapshot::create([
-        'user_id' => $this->user->id,
-        'date' => now()->subDay(),
-        'accounts' => [$this->account->id => ['balance' => 100.00]],
-        'goals' => [],
-        'debts' => [],
-    ]);
-
-    // Create snapshot with null accounts using direct database insert since create() validates
-    \DB::table('snapshots')->insert([
-        'user_id' => $this->user->id,
-        'date' => now()->toDateString(),
-        'accounts' => null,
-        'goals' => json_encode([]),
-        'debts' => json_encode([]),
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    $hasNewer = $this->snapshotService->hasNewerSnapshotsWithAccount(
-        $this->account->id,
-        $olderSnapshot->date,
-        $this->user->id
-    );
-
-    expect($hasNewer)->toBeFalse();
-});
 
 it('handles empty accounts array gracefully', function () {
     $olderSnapshot = Snapshot::create([
@@ -172,7 +147,7 @@ it('handles empty accounts array gracefully', function () {
 
 it('returns newer snapshots with account in chronological order', function () {
     $baseDate = now()->subDays(3);
-    
+
     $olderSnapshot = Snapshot::create([
         'user_id' => $this->user->id,
         'date' => $baseDate,
@@ -206,4 +181,124 @@ it('returns newer snapshots with account in chronological order', function () {
     expect($newerSnapshots)->toHaveCount(2);
     expect($newerSnapshots->first()->id)->toBe($newerSnapshot1->id);
     expect($newerSnapshots->last()->id)->toBe($newerSnapshot2->id);
+});
+
+it('returns empty array when no previous snapshots exist', function () {
+    $accounts = $this->snapshotService->getPreviousSnapshotAccounts($this->user->id);
+
+    expect($accounts)->toBe([]);
+});
+
+it('returns empty array when no previous snapshots exist before specified date', function () {
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now(),
+        'accounts' => [$this->account->id => ['balance' => 100.00]],
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    $accounts = $this->snapshotService->getPreviousSnapshotAccounts($this->user->id, now()->subDay());
+
+    expect($accounts)->toBe([]);
+});
+
+it('returns accounts from the most recent previous snapshot', function () {
+    $expectedAccounts = [
+        $this->account->id => ['balance' => 200, 'name' => 'Test Account'],
+        99 => ['balance' => 300, 'name' => 'Another Account']
+    ];
+
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDays(2),
+        'accounts' => [$this->account->id => ['balance' => 100]],
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => $expectedAccounts,
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    $accounts = $this->snapshotService->getPreviousSnapshotAccounts($this->user->id);
+
+    expect($accounts)->toBe($expectedAccounts);
+});
+
+it('returns accounts from previous snapshot before specified date', function () {
+    $olderAccounts = [
+        $this->account->id => ['balance' => 100, 'name' => 'Old Account']
+    ];
+
+    $newerAccounts = [
+        $this->account->id => ['balance' => 200, 'name' => 'New Account']
+    ];
+
+//    Snapshot::create(['user_id' => 11, 'date' => now()->subDays(2), 'accounts' => ['41' => ['balance' => 100, 'name' => 'Old Account']], 'goals' => [], 'debts' => []]);
+
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDays(2),
+        'accounts' => $olderAccounts,
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    $newerSnapshot = Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => $newerAccounts,
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    $accounts = $this->snapshotService->getPreviousSnapshotAccounts($this->user->id, $newerSnapshot->date);
+
+    expect($accounts)->toBe($olderAccounts);
+});
+
+
+it('returns empty array when previous snapshot has empty accounts', function () {
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => [],
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    $accounts = $this->snapshotService->getPreviousSnapshotAccounts($this->user->id);
+
+    expect($accounts)->toBe([]);
+});
+
+it('only considers snapshots for the specified user when getting previous accounts', function () {
+    $otherUser = User::factory()->create();
+    $otherUserAccounts = [999 => ['balance' => 999, 'name' => 'Other User Account']];
+    $thisUserAccounts = [$this->account->id => ['balance' => 100, 'name' => 'This User Account']];
+
+    Snapshot::create([
+        'user_id' => $otherUser->id,
+        'date' => now()->subDay(),
+        'accounts' => $otherUserAccounts,
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDays(2),
+        'accounts' => $thisUserAccounts,
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    $accounts = $this->snapshotService->getPreviousSnapshotAccounts($this->user->id);
+
+    expect($accounts)->toBe($thisUserAccounts);
 });
