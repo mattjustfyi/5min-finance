@@ -14,11 +14,24 @@ class SnapshotFactory extends Factory
      *
      * @return array<string, mixed>
      */
+    private static $userDateCounters = [];
+    
     public function definition(): array
     {
         return [
             'user_id' => \App\Models\User::factory(),
-            'date' => $this->faker->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
+            'date' => function (array $attributes) {
+                $userId = $attributes['user_id'];
+                if (!isset(self::$userDateCounters[$userId])) {
+                    self::$userDateCounters[$userId] = 0;
+                }
+                
+                // Generate sequential dates going backwards from today, ensuring uniqueness per user
+                $daysBack = self::$userDateCounters[$userId] * 7 + rand(1, 6); // Weekly intervals with some randomness
+                self::$userDateCounters[$userId]++;
+                
+                return now()->subDays($daysBack)->format('Y-m-d');
+            },
             'notes' => $this->faker->optional()->sentence(),
             'accounts' => [],
             'goals' => [],
