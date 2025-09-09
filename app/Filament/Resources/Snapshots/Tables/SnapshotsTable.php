@@ -134,6 +134,7 @@ class SnapshotsTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->defaultSort('date', 'desc')
             ->filters([
                 TrashedFilter::make(),
             ])
