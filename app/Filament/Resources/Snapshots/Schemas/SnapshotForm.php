@@ -5,6 +5,9 @@ namespace App\Filament\Resources\Snapshots\Schemas;
 use App\Models\Account;
 use App\Models\DebtAllocation;
 use App\Models\GoalAllocation;
+use App\Models\Snapshot;
+use Carbon\Carbon;
+use Closure;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Hidden;
@@ -25,7 +28,41 @@ class SnapshotForm
 
                 DatePicker::make('date')
                     ->required()
-                    ->default(now()),
+                    ->default(now())
+                    ->disabledDates(function () {
+                        $userId = Filament::auth()->id();
+                        $recordId = request()->route('record');
+                        
+                        $query = Snapshot::where('user_id', $userId);
+                        
+                        // Exclude current record when editing
+                        if ($recordId) {
+                            $query->where('id', '!=', $recordId);
+                        }
+                        
+                        return $query->pluck('date')->toArray();
+                    })
+                    ->rules([
+                        fn (): Closure => function (string $attribute, $value, Closure $fail) {
+                            $userId = Filament::auth()->id();
+                            $recordId = request()->route('record');
+
+                            // Convert to date-only format to match how the model stores dates
+                            $dateOnly = Carbon::parse($value)->toDateString();
+
+                            $query = Snapshot::where('user_id', $userId)
+                                ->where('date', $dateOnly);
+
+                            // Exclude current record when editing
+                            if ($recordId) {
+                                $query->where('id', '!=', $recordId);
+                            }
+
+                            if ($query->exists()) {
+                                $fail('You already have a snapshot for this date. Please choose a different date.');
+                            }
+                        },
+                    ]),
 
                 Textarea::make('notes')
                     ->columnSpanFull()

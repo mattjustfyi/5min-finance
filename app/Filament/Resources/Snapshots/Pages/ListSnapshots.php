@@ -6,6 +6,7 @@ use App\Filament\Resources\Snapshots\SnapshotResource;
 use App\Models\Snapshot;
 use App\Services\SnapshotService;
 use Carbon\Carbon;
+use Closure;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
@@ -31,18 +32,30 @@ class ListSnapshots extends ListRecords
                         ->required()
                         ->native(false)
                         ->default(now())
-                        ->unique(
-                            table: Snapshot::class,
-                            column: 'date',
-                            ignoreRecord: false,
-                            modifyRuleUsing: function ($rule) {
-                                return $rule->where('user_id', Filament::auth()->id());
-                            }
-                        ),
+                        ->disabledDates(function () {
+                            return Snapshot::where('user_id', Filament::auth()->id())
+                                ->pluck('date')
+                                ->toArray();
+                        })
+                        ->rules([
+                            fn (): Closure => function (string $attribute, $value, Closure $fail) {
+                                $userId = Filament::auth()->id();
+
+                                // Convert to date-only format to match how the model stores dates
+                                $dateOnly = Carbon::parse($value)->toDateString();
+
+                                $query = Snapshot::where('user_id', $userId)
+                                    ->where('date', $dateOnly);
+
+                                if ($query->exists()) {
+                                    $fail('You already have a snapshot for this date. Please choose a different date.');
+                                }
+                            },
+                        ]),
                 ])
                 ->action(function (array $data): void {
                     $snapshotService = app(SnapshotService::class);
-                    
+
                     $previousAccounts = $snapshotService->getPreviousSnapshotAccounts(
                         userId: Filament::auth()->id(),
                         beforeDate: Carbon::parse($data['date'])
