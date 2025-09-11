@@ -2,12 +2,10 @@
 
 namespace App\Filament\Resources\Snapshots;
 
-use App\Filament\Resources\Snapshots\Pages\CreateSnapshot;
 use App\Filament\Resources\Snapshots\Pages\EditSnapshot;
 use App\Filament\Resources\Snapshots\Pages\ListSnapshots;
 use App\Filament\Resources\Snapshots\Pages\ViewSnapshot;
 use App\Filament\Resources\Snapshots\Pages\ViewAccountLists;
-use App\Filament\Resources\Snapshots\Schemas\SnapshotForm;
 use App\Filament\Resources\Snapshots\Schemas\SnapshotInfolist;
 use App\Filament\Resources\Snapshots\Tables\SnapshotsTable;
 use App\Models\Snapshot;
@@ -28,7 +26,7 @@ class SnapshotResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return SnapshotForm::configure($schema);
+        return $schema;
     }
 
     public static function infolist(Schema $schema): Schema
@@ -52,7 +50,6 @@ class SnapshotResource extends Resource
     {
         return [
             'index' => ListSnapshots::route('/'),
-            'create' => CreateSnapshot::route('/create'),
             'view' => ViewSnapshot::route('/{record}'),
             'edit' => EditSnapshot::route('/{record}/edit'),
             'account-lists' => ViewAccountLists::route('/{record}/accounts'),

@@ -8,7 +8,6 @@ use App\Services\SnapshotService;
 use Carbon\Carbon;
 use Closure;
 use Filament\Actions\Action;
-use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
@@ -78,7 +77,6 @@ class ListSnapshots extends ListRecords
                     $this->redirect(SnapshotResource::getUrl('account-lists', ['record' => $snapshot]));
                 })
                 ->modal(),
-            CreateAction::make(),
         ];
     }
 }
