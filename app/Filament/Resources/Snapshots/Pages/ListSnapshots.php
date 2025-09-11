@@ -22,15 +22,27 @@ class ListSnapshots extends ListRecords
     {
         return [
             Action::make('quickSnapshot')
-                ->label('Quick Snapshot')
-                ->icon(Heroicon::OutlinedPlus)
+                ->label('New snapshot')
                 ->color('primary')
                 ->form([
                     DatePicker::make('date')
                         ->label('Snapshot Date')
                         ->required()
                         ->native(false)
-                        ->default(now())
+                        ->default(function () {
+                            $userId = Filament::auth()->id();
+                            $existingDates = Snapshot::where('user_id', $userId)
+                                ->pluck('date')
+                                ->map(fn($date) => Carbon::parse($date)->toDateString())
+                                ->toArray();
+                            
+                            $candidate = now();
+                            while (in_array($candidate->toDateString(), $existingDates)) {
+                                $candidate = $candidate->addDay();
+                            }
+                            
+                            return $candidate;
+                        })
                         ->disabledDates(function () {
                             return Snapshot::where('user_id', Filament::auth()->id())
                                 ->pluck('date')
