@@ -67,17 +67,29 @@ class ListSnapshots extends ListRecords
                 ->action(function (array $data): void {
                     $snapshotService = app(SnapshotService::class);
 
+                    $beforeDate = Carbon::parse($data['date']);
+
                     $previousAccounts = $snapshotService->getPreviousSnapshotAccounts(
                         userId: Filament::auth()->id(),
-                        beforeDate: Carbon::parse($data['date'])
+                        beforeDate: $beforeDate
+                    );
+
+                    $previousGoals = $snapshotService->getPreviousSnapshotGoals(
+                        userId: Filament::auth()->id(),
+                        beforeDate: $beforeDate
+                    );
+
+                    $previousDebts = $snapshotService->getPreviousSnapshotDebts(
+                        userId: Filament::auth()->id(),
+                        beforeDate: $beforeDate
                     );
 
                     $snapshot = Snapshot::create([
                         'user_id' => Filament::auth()->id(),
                         'date' => $data['date'],
                         'accounts' => $previousAccounts,
-                        'goals' => [],
-                        'debts' => [],
+                        'goals' => $previousGoals,
+                        'debts' => $previousDebts,
                     ]);
 
                     Notification::make()

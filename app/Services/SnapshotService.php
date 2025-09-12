@@ -82,6 +82,72 @@ class SnapshotService
     }
 
     /**
+     * Get goals from the previous snapshot for the specified user (target amounts only).
+     *
+     * @param int $userId
+     * @param Carbon|null $beforeDate
+     * @return array
+     */
+    public function getPreviousSnapshotGoals(int $userId, ?Carbon $beforeDate = null): array
+    {
+        $query = Snapshot::where('user_id', $userId);
+
+        if ($beforeDate) {
+            $query->where('date', '<', $beforeDate->format('Y-m-d'));
+        }
+
+        $previousSnapshot = $query->orderBy('date', 'desc')->first();
+
+        if (!$previousSnapshot) {
+            return [];
+        }
+
+        if (!is_array($previousSnapshot->goals) || empty($previousSnapshot->goals)) {
+            return [];
+        }
+
+        return collect($previousSnapshot->goals)->map(function ($goal) {
+            return [
+                'goalId' => $goal['goalId'],
+                'targetAmount' => $goal['targetAmount'],
+            ];
+        })->toArray();
+    }
+
+    /**
+     * Get debts from the previous snapshot for the specified user.
+     *
+     * @param int $userId
+     * @param Carbon|null $beforeDate
+     * @return array
+     */
+    public function getPreviousSnapshotDebts(int $userId, ?Carbon $beforeDate = null): array
+    {
+        $query = Snapshot::where('user_id', $userId);
+
+        if ($beforeDate) {
+            $query->where('date', '<', $beforeDate->format('Y-m-d'));
+        }
+
+        $previousSnapshot = $query->orderBy('date', 'desc')->first();
+
+        if (!$previousSnapshot) {
+            return [];
+        }
+
+        if (!is_array($previousSnapshot->debts) || empty($previousSnapshot->debts)) {
+            return [];
+        }
+
+        return collect($previousSnapshot->debts)->map(function ($debt) {
+            return [
+                'debtId' => $debt['debtId'],
+                'amount' => $debt['amount'],
+            ];
+        })->toArray();
+    }
+
+    /**
      * Get snapshots within a date range for the specified user.
      *
      * @param int $userId

@@ -234,11 +234,171 @@ it('copies accounts from most recent previous snapshot when multiple exist', fun
     expect($newSnapshot->accounts)->toBe($newerAccounts);
 });
 
-it('handles case when date is specified before all existing snapshots', function () {
-    // Create a future snapshot
+it('copies goals from previous snapshot when creating quick snapshot', function () {
+    $previousGoals = [
+        [
+            'goalId' => 1,
+            'targetAmount' => 5000,
+            'deductions' => [
+                [
+                    'amount' => 100,
+                    'description' => 'Test deduction',
+                    'dateOccurred' => '2024-01-01',
+                ],
+            ],
+        ],
+        [
+            'goalId' => 2,
+            'targetAmount' => 10000,
+            'deductions' => [],
+        ],
+    ];
+    
+    // Create a previous snapshot
     Snapshot::create([
         'user_id' => $this->user->id,
-        'date' => now()->addDay(),
+        'date' => now()->subDay(),
+        'accounts' => [],
+        'goals' => $previousGoals,
+        'debts' => [],
+    ]);
+    
+    $newDate = now()->format('Y-m-d');
+    
+    Livewire::test(ListSnapshots::class)
+        ->callAction('quickSnapshot', data: [
+            'date' => $newDate,
+        ])
+        ->assertHasNoActionErrors();
+    
+    expect(Snapshot::count())->toBe(2);
+    
+    $newSnapshot = Snapshot::where('date', $newDate)->first();
+    expect($newSnapshot->goals)->toBe([
+        [
+            'goalId' => 1,
+            'targetAmount' => 5000,
+        ],
+        [
+            'goalId' => 2,
+            'targetAmount' => 10000,
+        ],
+    ]);
+});
+
+it('copies debts from previous snapshot when creating quick snapshot', function () {
+    $previousDebts = [
+        [
+            'debtId' => 1,
+            'amount' => 1500,
+            'extraField' => 'should be filtered out',
+        ],
+        [
+            'debtId' => 2,
+            'amount' => 2500,
+        ],
+    ];
+    
+    // Create a previous snapshot
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => [],
+        'goals' => [],
+        'debts' => $previousDebts,
+    ]);
+    
+    $newDate = now()->format('Y-m-d');
+    
+    Livewire::test(ListSnapshots::class)
+        ->callAction('quickSnapshot', data: [
+            'date' => $newDate,
+        ])
+        ->assertHasNoActionErrors();
+    
+    expect(Snapshot::count())->toBe(2);
+    
+    $newSnapshot = Snapshot::where('date', $newDate)->first();
+    expect($newSnapshot->debts)->toBe([
+        [
+            'debtId' => 1,
+            'amount' => 1500,
+        ],
+        [
+            'debtId' => 2,
+            'amount' => 2500,
+        ],
+    ]);
+});
+
+it('creates snapshot with empty goals and debts when no previous snapshot exists', function () {
+    $date = now()->format('Y-m-d');
+    
+    Livewire::test(ListSnapshots::class)
+        ->callAction('quickSnapshot', data: [
+            'date' => $date,
+        ])
+        ->assertHasNoActionErrors();
+    
+    $snapshot = Snapshot::first();
+    expect($snapshot->goals)->toBe([]);
+    expect($snapshot->debts)->toBe([]);
+});
+
+it('copies goals and debts from most recent previous snapshot when multiple exist', function () {
+    $olderGoals = [
+        ['goalId' => 1, 'targetAmount' => 1000],
+    ];
+    $olderDebts = [
+        ['debtId' => 1, 'amount' => 500],
+    ];
+    
+    $newerGoals = [
+        ['goalId' => 1, 'targetAmount' => 2000],
+        ['goalId' => 2, 'targetAmount' => 3000],
+    ];
+    $newerDebts = [
+        ['debtId' => 1, 'amount' => 400],
+        ['debtId' => 2, 'amount' => 600],
+    ];
+    
+    // Create older snapshot
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDays(3),
+        'accounts' => [],
+        'goals' => $olderGoals,
+        'debts' => $olderDebts,
+    ]);
+    
+    // Create more recent snapshot
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => [],
+        'goals' => $newerGoals,
+        'debts' => $newerDebts,
+    ]);
+    
+    $newDate = now()->format('Y-m-d');
+    
+    Livewire::test(ListSnapshots::class)
+        ->callAction('quickSnapshot', data: [
+            'date' => $newDate,
+        ])
+        ->assertHasNoActionErrors();
+    
+    $newSnapshot = Snapshot::where('date', $newDate)->first();
+    expect($newSnapshot->goals)->toBe($newerGoals);
+    expect($newSnapshot->debts)->toBe($newerDebts);
+});
+
+it('handles case when date is specified before all existing snapshots', function () {
+    // Create a future snapshot (relative to the date we'll create)
+    $futureDate = now()->addDay()->format('Y-m-d');
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $futureDate,
         'accounts' => [1 => ['balance' => 1000, 'name' => 'Future Account']],
         'goals' => [],
         'debts' => [],
@@ -253,6 +413,136 @@ it('handles case when date is specified before all existing snapshots', function
         ])
         ->assertHasNoActionErrors();
     
-    $newSnapshot = Snapshot::where('date', $pastDate)->first();
+    expect(Snapshot::count())->toBe(2);
+    
+    // The new snapshot should be the one with empty accounts (since it's before all others)
+    $newSnapshot = Snapshot::where('user_id', $this->user->id)
+        ->get()
+        ->sortBy('date')
+        ->first();
+    
+    expect($newSnapshot)->not->toBeNull();
     expect($newSnapshot->accounts)->toBe([]);
+    expect($newSnapshot->goals)->toBe([]);
+    expect($newSnapshot->debts)->toBe([]);
+});
+
+it('handles mixed scenarios with goals in one snapshot and debts in another', function () {
+    // Create snapshot with goals but no debts
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDays(3),
+        'accounts' => [1 => ['balance' => 1000]],
+        'goals' => [
+            ['goalId' => 1, 'targetAmount' => 5000, 'deductions' => [['amount' => 100]]],
+        ],
+        'debts' => [],
+    ]);
+
+    // Create snapshot with debts but no goals
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => [1 => ['balance' => 1500]],
+        'goals' => [],
+        'debts' => [
+            ['debtId' => 1, 'amount' => 2000],
+        ],
+    ]);
+
+    $newDate = now()->format('Y-m-d');
+
+    Livewire::test(ListSnapshots::class)
+        ->callAction('quickSnapshot', data: ['date' => $newDate])
+        ->assertHasNoActionErrors();
+
+    $newSnapshot = Snapshot::where('date', $newDate)->first();
+    
+    // Should copy from most recent snapshot (debts but no goals)
+    expect($newSnapshot->accounts)->toBe([1 => ['balance' => 1500]]);
+    expect($newSnapshot->goals)->toBe([]);
+    expect($newSnapshot->debts)->toBe([['debtId' => 1, 'amount' => 2000]]);
+});
+
+it('works correctly when previous snapshot has large amounts of data', function () {
+    // Create snapshot with many goals and debts
+    $manyGoals = [];
+    $manyDebts = [];
+    
+    for ($i = 1; $i <= 10; $i++) {
+        $manyGoals[] = [
+            'goalId' => $i,
+            'targetAmount' => rand(1000, 50000),
+            'deductions' => [
+                ['amount' => rand(50, 500), 'description' => "Deduction $i", 'dateOccurred' => '2024-01-01'],
+            ],
+        ];
+        $manyDebts[] = [
+            'debtId' => $i,
+            'amount' => rand(500, 10000),
+        ];
+    }
+
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => [],
+        'goals' => $manyGoals,
+        'debts' => $manyDebts,
+    ]);
+
+    Livewire::test(ListSnapshots::class)
+        ->callAction('quickSnapshot', data: ['date' => now()->format('Y-m-d')])
+        ->assertHasNoActionErrors();
+
+    $newSnapshot = Snapshot::where('user_id', $this->user->id)
+        ->orderBy('date', 'desc')
+        ->first();
+
+    expect($newSnapshot->goals)->toHaveCount(10);
+    expect($newSnapshot->debts)->toHaveCount(10);
+    
+    // Verify deductions were filtered out
+    foreach ($newSnapshot->goals as $goal) {
+        expect($goal)->toHaveKeys(['goalId', 'targetAmount']);
+        expect($goal)->not->toHaveKey('deductions');
+    }
+
+    // Verify only required debt fields are present
+    foreach ($newSnapshot->debts as $debt) {
+        expect($debt)->toHaveKeys(['debtId', 'amount']);
+    }
+});
+
+it('preserves order of goals and debts arrays', function () {
+    $orderedGoals = [
+        ['goalId' => 3, 'targetAmount' => 3000],
+        ['goalId' => 1, 'targetAmount' => 1000],
+        ['goalId' => 2, 'targetAmount' => 2000],
+    ];
+
+    $orderedDebts = [
+        ['debtId' => 30, 'amount' => 300],
+        ['debtId' => 10, 'amount' => 100],
+        ['debtId' => 20, 'amount' => 200],
+    ];
+
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => [],
+        'goals' => $orderedGoals,
+        'debts' => $orderedDebts,
+    ]);
+
+    Livewire::test(ListSnapshots::class)
+        ->callAction('quickSnapshot', data: ['date' => now()->format('Y-m-d')])
+        ->assertHasNoActionErrors();
+
+    $newSnapshot = Snapshot::where('user_id', $this->user->id)
+        ->orderBy('date', 'desc')
+        ->first();
+
+    expect($newSnapshot->goals)->toBe($orderedGoals);
+    expect($newSnapshot->debts)->toBe($orderedDebts);
 });
