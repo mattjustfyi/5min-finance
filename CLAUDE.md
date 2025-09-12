@@ -1,6 +1,7 @@
-- Prefix all `php artisan` commands with `herd`, e.g. `herd php artisan ...`
+- Prefix all `php` commands with `herd`, e.g. `herd php artisan ...` or `herd php -l
 - Use idiomatic and built-in Laravel patterns and approaches.
 - Use standard laravel commands when creating models, filament resources, migrations, etc. Then modify the result afterwards.
-- Use Filament for UI where possible
+- Use Filament for UI where possible.
+- Use Filament v4. The docs can be found at: https://filamentphp.com/docs/4.x/introduction/overview
 - I'm a solo developer with no users who needs to ship fast and take risks. When providing suggestions, please consider that I prefer solutions that are fast to implement and simple to maintain.
 - The database used is SQLite.

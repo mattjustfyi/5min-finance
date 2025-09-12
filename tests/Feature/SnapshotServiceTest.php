@@ -302,3 +302,173 @@ it('only considers snapshots for the specified user when getting previous accoun
 
     expect($accounts)->toBe($thisUserAccounts);
 });
+
+it('returns snapshots within date range in chronological order', function () {
+    $baseDate = now()->subDays(5);
+    
+    $snapshot1 = Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $baseDate->copy()->addDay(),
+        'accounts' => [$this->account->id => ['balance' => 100.00]],
+        'goals' => [],
+        'debts' => [],
+    ]);
+    
+    $snapshot2 = Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $baseDate->copy()->addDays(3),
+        'accounts' => [$this->account->id => ['balance' => 200.00]],
+        'goals' => [],
+        'debts' => [],
+    ]);
+    
+    // Create snapshot outside range
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $baseDate->copy()->addDays(6),
+        'accounts' => [$this->account->id => ['balance' => 300.00]],
+        'goals' => [],
+        'debts' => [],
+    ]);
+    
+    $snapshots = $this->snapshotService->getSnapshotsInDateRange(
+        $this->user->id,
+        $baseDate,
+        $baseDate->copy()->addDays(4)
+    );
+    
+    expect($snapshots)->toHaveCount(2);
+    expect($snapshots->first()->id)->toBe($snapshot1->id);
+    expect($snapshots->last()->id)->toBe($snapshot2->id);
+});
+
+it('returns empty collection when no snapshots exist in date range', function () {
+    $baseDate = now()->subDays(5);
+    
+    $snapshots = $this->snapshotService->getSnapshotsInDateRange(
+        $this->user->id,
+        $baseDate,
+        $baseDate->copy()->addDay()
+    );
+    
+    expect($snapshots)->toBeEmpty();
+});
+
+it('returns all newer snapshots in chronological order', function () {
+    $baseDate = now()->subDays(3);
+    
+    $olderSnapshot = Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $baseDate,
+        'accounts' => [$this->account->id => ['balance' => 100.00]],
+        'goals' => [],
+        'debts' => [],
+    ]);
+    
+    $newerSnapshot1 = Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $baseDate->copy()->addDay(),
+        'accounts' => [$this->account->id => ['balance' => 200.00]],
+        'goals' => [],
+        'debts' => [],
+    ]);
+    
+    $newerSnapshot2 = Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $baseDate->copy()->addDays(2),
+        'accounts' => [$this->account->id => ['balance' => 300.00]],
+        'goals' => [],
+        'debts' => [],
+    ]);
+    
+    $newerSnapshots = $this->snapshotService->getAllNewerSnapshots(
+        $this->user->id,
+        $olderSnapshot->date
+    );
+    
+    expect($newerSnapshots)->toHaveCount(2);
+    expect($newerSnapshots->first()->id)->toBe($newerSnapshot1->id);
+    expect($newerSnapshots->last()->id)->toBe($newerSnapshot2->id);
+});
+
+it('returns true when account does not exist in any snapshots', function () {
+    $snapshots = collect([
+        Snapshot::create([
+            'user_id' => $this->user->id,
+            'date' => now(),
+            'accounts' => [999 => ['balance' => 100.00]],
+            'goals' => [],
+            'debts' => [],
+        ])
+    ]);
+    
+    $isValid = $this->snapshotService->validateAccountNotInSnapshots(
+        $this->account->id,
+        $snapshots
+    );
+    
+    expect($isValid)->toBeTrue();
+});
+
+it('returns false when account exists in at least one snapshot', function () {
+    $snapshots = collect([
+        Snapshot::create([
+            'user_id' => $this->user->id,
+            'date' => now()->subDay(),
+            'accounts' => [999 => ['balance' => 100.00]],
+            'goals' => [],
+            'debts' => [],
+        ]),
+        Snapshot::create([
+            'user_id' => $this->user->id,
+            'date' => now(),
+            'accounts' => [$this->account->id => ['balance' => 200.00]],
+            'goals' => [],
+            'debts' => [],
+        ])
+    ]);
+    
+    $isValid = $this->snapshotService->validateAccountNotInSnapshots(
+        $this->account->id,
+        $snapshots
+    );
+    
+    expect($isValid)->toBeFalse();
+});
+
+it('adds account to multiple snapshots with balance 0', function () {
+    $snapshot1 = Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => [999 => ['balance' => 100.00]],
+        'goals' => [],
+        'debts' => [],
+    ]);
+    
+    $snapshot2 = Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now(),
+        'accounts' => [888 => ['balance' => 200.00]],
+        'goals' => [],
+        'debts' => [],
+    ]);
+    
+    $snapshots = collect([$snapshot1, $snapshot2]);
+    
+    $this->snapshotService->addAccountToMultipleSnapshots(
+        $this->account->id,
+        $snapshots
+    );
+    
+    $snapshot1->refresh();
+    $snapshot2->refresh();
+    
+    expect($snapshot1->accounts)->toHaveKey($this->account->id);
+    expect($snapshot1->accounts[$this->account->id]['balance'])->toBe(0);
+    expect($snapshot2->accounts)->toHaveKey($this->account->id);
+    expect($snapshot2->accounts[$this->account->id]['balance'])->toBe(0);
+    
+    // Ensure other accounts are preserved
+    expect($snapshot1->accounts)->toHaveKey(999);
+    expect($snapshot2->accounts)->toHaveKey(888);
+});
