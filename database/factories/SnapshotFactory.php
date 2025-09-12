@@ -14,21 +14,18 @@ class SnapshotFactory extends Factory
      *
      * @return array<string, mixed>
      */
-    private static $userDateCounters = [];
-    
     public function definition(): array
     {
         return [
             'user_id' => \App\Models\User::factory(),
             'date' => function (array $attributes) {
+                // Generate deterministic dates without static state
+                // Use a combination of user_id and current microtime to ensure uniqueness
                 $userId = $attributes['user_id'];
-                if (!isset(self::$userDateCounters[$userId])) {
-                    self::$userDateCounters[$userId] = 0;
-                }
+                $uniqueSeed = crc32($userId . microtime(true) . mt_rand());
                 
-                // Generate sequential dates going backwards from today, ensuring uniqueness per user
-                $daysBack = self::$userDateCounters[$userId] * 7 + rand(1, 6); // Weekly intervals with some randomness
-                self::$userDateCounters[$userId]++;
+                // Generate dates going backwards from today, ensuring uniqueness per user
+                $daysBack = abs($uniqueSeed % 365) + rand(1, 30); // Up to a year back with some randomness
                 
                 return now()->subDays($daysBack)->format('Y-m-d');
             },
