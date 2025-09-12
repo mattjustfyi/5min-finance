@@ -85,6 +85,12 @@ class DatabaseSeeder extends Seeder
         $userGoals = GoalAllocation::where('user_id', $user->id)->get();
         $userDebts = DebtAllocation::where('user_id', $user->id)->get();
 
+        // Set consistent goal targets (4-digit round numbers)
+        $goalTargets = [];
+        foreach ($userGoals as $goal) {
+            $goalTargets[$goal->id] = collect([5000, 7500, 10000, 12000, 15000, 20000])->random();
+        }
+
         // Create snapshots going back in 4-week intervals
         for ($i = 0; $i < $snapshotCount; $i++) {
             $daysBack = $i * 28; // 4-week intervals
@@ -103,27 +109,29 @@ class DatabaseSeeder extends Seeder
                 ];
             }
 
-            // Create realistic goals data that evolves
+            // Create realistic goals data with consistent targets
             $goalsData = [];
+            
+            // Add 1-2 deductions total per snapshot (not per goal)
+            $totalDeductions = rand(0, 2);
+            $deductionsAdded = 0;
+            
             foreach ($userGoals as $goal) {
-                // Target amounts might adjust slightly over time
-                $baseTarget = rand(10000, 50000) / 100;
-                $targetAmount = $baseTarget + ($i * 50); // Goals might grow over time
-                
-                // Add progressive deductions (more recent snapshots have more deductions)
                 $deductions = [];
-                $maxDeductions = max(0, $snapshotCount - $i - 3); // Older snapshots have fewer deductions
-                for ($d = 0; $d < min(3, $maxDeductions); $d++) {
+                
+                // Only add deductions if we haven't reached the limit and there's a chance
+                if ($deductionsAdded < $totalDeductions && rand(1, 100) <= 60) {
                     $deductions[] = [
-                        'amount' => rand(100, 500) / 100,
-                        'description' => 'Goal expense ' . ($d + 1),
-                        'dateOccurred' => now()->subDays($daysBack + ($d * 7))->format('Y-m-d'),
+                        'amount' => rand(50, 300),
+                        'description' => collect(['Car repair', 'Medical expense', 'Home maintenance', 'Emergency purchase'])->random(),
+                        'dateOccurred' => now()->subDays($daysBack + rand(0, 27))->format('Y-m-d'),
                     ];
+                    $deductionsAdded++;
                 }
                 
                 $goalsData[] = [
                     'goalId' => $goal->id,
-                    'targetAmount' => round($targetAmount, 2),
+                    'targetAmount' => $goalTargets[$goal->id],
                     'deductions' => $deductions,
                 ];
             }
