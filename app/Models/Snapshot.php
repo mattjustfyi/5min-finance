@@ -56,11 +56,12 @@ class Snapshot extends Model
                 }
 
                 // Validate string dates before parsing
-                $validator = validator(['date' => $value], [
-                    'date' => 'required|date|date_format:Y-m-d'
-                ]);
-
-                if ($validator->fails()) {
+                try {
+                    $carbonDate = Carbon::createFromFormat('Y-m-d', $value);
+                    if ($carbonDate->format('Y-m-d') !== $value) {
+                        throw new InvalidArgumentException('Invalid date format. Date must be a valid date in Y-m-d format.');
+                    }
+                } catch (\Exception $e) {
                     throw new InvalidArgumentException('Invalid date format. Date must be a valid date in Y-m-d format.');
                 }
 
