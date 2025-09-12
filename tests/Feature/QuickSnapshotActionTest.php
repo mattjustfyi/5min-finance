@@ -426,3 +426,123 @@ it('handles case when date is specified before all existing snapshots', function
     expect($newSnapshot->goals)->toBe([]);
     expect($newSnapshot->debts)->toBe([]);
 });
+
+it('handles mixed scenarios with goals in one snapshot and debts in another', function () {
+    // Create snapshot with goals but no debts
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDays(3),
+        'accounts' => [1 => ['balance' => 1000]],
+        'goals' => [
+            ['goalId' => 1, 'targetAmount' => 5000, 'deductions' => [['amount' => 100]]],
+        ],
+        'debts' => [],
+    ]);
+
+    // Create snapshot with debts but no goals
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => [1 => ['balance' => 1500]],
+        'goals' => [],
+        'debts' => [
+            ['debtId' => 1, 'amount' => 2000],
+        ],
+    ]);
+
+    $newDate = now()->format('Y-m-d');
+
+    Livewire::test(ListSnapshots::class)
+        ->callAction('quickSnapshot', data: ['date' => $newDate])
+        ->assertHasNoActionErrors();
+
+    $newSnapshot = Snapshot::where('date', $newDate)->first();
+    
+    // Should copy from most recent snapshot (debts but no goals)
+    expect($newSnapshot->accounts)->toBe([1 => ['balance' => 1500]]);
+    expect($newSnapshot->goals)->toBe([]);
+    expect($newSnapshot->debts)->toBe([['debtId' => 1, 'amount' => 2000]]);
+});
+
+it('works correctly when previous snapshot has large amounts of data', function () {
+    // Create snapshot with many goals and debts
+    $manyGoals = [];
+    $manyDebts = [];
+    
+    for ($i = 1; $i <= 10; $i++) {
+        $manyGoals[] = [
+            'goalId' => $i,
+            'targetAmount' => rand(1000, 50000),
+            'deductions' => [
+                ['amount' => rand(50, 500), 'description' => "Deduction $i", 'dateOccurred' => '2024-01-01'],
+            ],
+        ];
+        $manyDebts[] = [
+            'debtId' => $i,
+            'amount' => rand(500, 10000),
+        ];
+    }
+
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => [],
+        'goals' => $manyGoals,
+        'debts' => $manyDebts,
+    ]);
+
+    Livewire::test(ListSnapshots::class)
+        ->callAction('quickSnapshot', data: ['date' => now()->format('Y-m-d')])
+        ->assertHasNoActionErrors();
+
+    $newSnapshot = Snapshot::where('user_id', $this->user->id)
+        ->orderBy('date', 'desc')
+        ->first();
+
+    expect($newSnapshot->goals)->toHaveCount(10);
+    expect($newSnapshot->debts)->toHaveCount(10);
+    
+    // Verify deductions were filtered out
+    foreach ($newSnapshot->goals as $goal) {
+        expect($goal)->toHaveKeys(['goalId', 'targetAmount']);
+        expect($goal)->not->toHaveKey('deductions');
+    }
+
+    // Verify only required debt fields are present
+    foreach ($newSnapshot->debts as $debt) {
+        expect($debt)->toHaveKeys(['debtId', 'amount']);
+    }
+});
+
+it('preserves order of goals and debts arrays', function () {
+    $orderedGoals = [
+        ['goalId' => 3, 'targetAmount' => 3000],
+        ['goalId' => 1, 'targetAmount' => 1000],
+        ['goalId' => 2, 'targetAmount' => 2000],
+    ];
+
+    $orderedDebts = [
+        ['debtId' => 30, 'amount' => 300],
+        ['debtId' => 10, 'amount' => 100],
+        ['debtId' => 20, 'amount' => 200],
+    ];
+
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => now()->subDay(),
+        'accounts' => [],
+        'goals' => $orderedGoals,
+        'debts' => $orderedDebts,
+    ]);
+
+    Livewire::test(ListSnapshots::class)
+        ->callAction('quickSnapshot', data: ['date' => now()->format('Y-m-d')])
+        ->assertHasNoActionErrors();
+
+    $newSnapshot = Snapshot::where('user_id', $this->user->id)
+        ->orderBy('date', 'desc')
+        ->first();
+
+    expect($newSnapshot->goals)->toBe($orderedGoals);
+    expect($newSnapshot->debts)->toBe($orderedDebts);
+});
