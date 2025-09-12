@@ -67,17 +67,40 @@ class ListSnapshots extends ListRecords
                 ->action(function (array $data): void {
                     $snapshotService = app(SnapshotService::class);
 
-                    $previousAccounts = $snapshotService->getPreviousSnapshotAccounts(
-                        userId: Filament::auth()->id(),
-                        beforeDate: Carbon::parse($data['date'])
-                    );
+                    try {
+                        $beforeDate = Carbon::parse($data['date']);
+                    } catch (\Exception $e) {
+                        // Let validation handle invalid dates
+                        $beforeDate = null;
+                    }
+
+                    $previousAccounts = $beforeDate 
+                        ? $snapshotService->getPreviousSnapshotAccounts(
+                            userId: Filament::auth()->id(),
+                            beforeDate: $beforeDate
+                        )
+                        : [];
+
+                    $previousGoals = $beforeDate 
+                        ? $snapshotService->getPreviousSnapshotGoals(
+                            userId: Filament::auth()->id(),
+                            beforeDate: $beforeDate
+                        )
+                        : [];
+
+                    $previousDebts = $beforeDate 
+                        ? $snapshotService->getPreviousSnapshotDebts(
+                            userId: Filament::auth()->id(),
+                            beforeDate: $beforeDate
+                        )
+                        : [];
 
                     $snapshot = Snapshot::create([
                         'user_id' => Filament::auth()->id(),
                         'date' => $data['date'],
                         'accounts' => $previousAccounts,
-                        'goals' => [],
-                        'debts' => [],
+                        'goals' => $previousGoals,
+                        'debts' => $previousDebts,
                     ]);
 
                     Notification::make()
