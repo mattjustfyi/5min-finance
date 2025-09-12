@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Snapshots\Pages;
 
 use App\Filament\Resources\Snapshots\SnapshotResource;
 use App\Models\Account;
+use App\Models\Snapshot;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Facades\Filament;
 use Filament\Support\Facades\FilamentView;
@@ -22,6 +23,7 @@ use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\DatePicker;
 use App\Services\AccountService;
 use App\Services\SnapshotService;
 use Illuminate\Support\Facades\DB;
@@ -115,6 +117,24 @@ class ViewAccountLists extends ViewRecord implements HasActions, HasSchemas
         return $this->cashTotal;
     }
 
+    #[Computed]
+    public function newerSnapshotsCount(): int
+    {
+        $snapshotService = app(SnapshotService::class);
+        return $snapshotService->getAllNewerSnapshots(
+            Filament::auth()->id(),
+            $this->record->date
+        )->count();
+    }
+
+    #[Computed]
+    public function hasOlderSnapshots(): bool
+    {
+        return Snapshot::where('user_id', Filament::auth()->id())
+            ->where('date', '<', $this->record->date->format('Y-m-d'))
+            ->exists();
+    }
+
     public function getBreadcrumbs(): array
     {
         $resource = static::getResource();
@@ -192,7 +212,13 @@ class ViewAccountLists extends ViewRecord implements HasActions, HasSchemas
             ->color('primary')
             ->size('xs')
             ->modalHeading('Add New Account')
-            ->modalDescription('Create a new account to track your finances.')
+            ->modalDescription(function () {
+                $description = 'Create a new account to track your finances.';
+                if ($this->newerSnapshotsCount > 0) {
+                    $description .= " Account will be added to {$this->newerSnapshotsCount} newer snapshot(s).";
+                }
+                return $description;
+            })
             ->schema([
                 TextInput::make('name')
                     ->label('Account Name')
@@ -236,33 +262,102 @@ class ViewAccountLists extends ViewRecord implements HasActions, HasSchemas
                         'min' => 'Conversion rate must be greater than 0.',
                     ])
                     ->helperText('Rate to convert this currency to your base currency (1.0 for base currency)'),
+                
+                DatePicker::make('addToEarlierSnapshotsDate')
+                    ->label('Add account to earlier snapshots, going back to')
+                    ->placeholder('Select date (optional)')
+                    ->maxDate($this->record->date->subDay()->format('Y-m-d'))
+                    ->disabled(!$this->hasOlderSnapshots)
+                    ->helperText($this->hasOlderSnapshots 
+                        ? 'Optional: Select a date to add this account to snapshots between that date and now.' 
+                        : 'No older snapshots available.')
+                    ->validationMessages([
+                        'before' => 'Date must be before the current snapshot date.',
+                    ]),
             ])
             ->action(function (array $data): void {
                 try {
                     $accountService = app(AccountService::class);
+                    $snapshotService = app(SnapshotService::class);
                     
-                    $account = $accountService->createAccount([
-                        'name' => $data['name'],
-                        'currency' => strtoupper($data['currency']),
-                        'conversion_rate' => $data['conversionRate'],
-                    ], Filament::auth()->id());
+                    DB::transaction(function () use ($data, $accountService, $snapshotService) {
+                        // Create the account
+                        $account = $accountService->createAccount([
+                            'name' => $data['name'],
+                            'currency' => strtoupper($data['currency']),
+                            'conversion_rate' => $data['conversionRate'],
+                        ], Filament::auth()->id());
 
-                    // Add the new account to the snapshot with balance 0
-                    $currentAccounts = $this->record->accounts ?? [];
-                    $currentAccounts[$account->id] = ['balance' => 0.0];
-                    
-                    $this->record->update(['accounts' => $currentAccounts]);
-                    $this->accountBalances[$account->id] = 0.0;
-                    
-                    // Refresh computed properties
-                    unset($this->cashTotal);
+                        // Collect all snapshots that need to be updated
+                        $snapshotsToUpdate = collect([$this->record]);
+                        
+                        // Add newer snapshots (always mandatory)
+                        $newerSnapshots = $snapshotService->getAllNewerSnapshots(
+                            Filament::auth()->id(),
+                            $this->record->date
+                        );
+                        $snapshotsToUpdate = $snapshotsToUpdate->merge($newerSnapshots);
+                        
+                        // Add older snapshots if date range is specified
+                        if (!empty($data['addToEarlierSnapshotsDate'])) {
+                            $fromDate = \Carbon\Carbon::parse($data['addToEarlierSnapshotsDate']);
+                            $toDate = $this->record->date->copy()->subDay();
+                            
+                            // Validate date range
+                            if ($fromDate->greaterThanOrEqualTo($this->record->date)) {
+                                throw new \InvalidArgumentException('Selected date must be before the current snapshot date.');
+                            }
+                            
+                            $olderSnapshots = $snapshotService->getSnapshotsInDateRange(
+                                Filament::auth()->id(),
+                                $fromDate,
+                                $toDate
+                            );
+                            
+                            // Check if any snapshots were found in the range
+                            if ($olderSnapshots->isEmpty()) {
+                                Notification::make()
+                                    ->title('No snapshots found')
+                                    ->body("No snapshots found between {$fromDate->format('M j, Y')} and {$toDate->format('M j, Y')}.")
+                                    ->warning()
+                                    ->send();
+                            }
+                            
+                            $snapshotsToUpdate = $snapshotsToUpdate->merge($olderSnapshots);
+                        }
 
+                        // Validate that account doesn't already exist in any of the target snapshots
+                        if (!$snapshotService->validateAccountNotInSnapshots($account->id, $snapshotsToUpdate)) {
+                            throw new \InvalidArgumentException('Account already exists in one or more target snapshots.');
+                        }
+
+                        // Add account to all target snapshots
+                        $snapshotService->addAccountToMultipleSnapshots($account->id, $snapshotsToUpdate);
+                        
+                        // Update local state
+                        $this->accountBalances[$account->id] = 0.0;
+                        
+                        // Refresh computed properties
+                        unset($this->cashTotal);
+
+                        $totalSnapshotsUpdated = $snapshotsToUpdate->count();
+                        $notificationBody = $totalSnapshotsUpdated === 1 
+                            ? "Account '{$account->name}' has been created and added to this snapshot."
+                            : "Account '{$account->name}' has been created and added to {$totalSnapshotsUpdated} snapshots.";
+
+                        Notification::make()
+                            ->title('Account created successfully!')
+                            ->body($notificationBody)
+                            ->success()
+                            ->send();
+                    });
+
+                } catch (\InvalidArgumentException $e) {
                     Notification::make()
-                        ->title('Account created and added!')
-                        ->body("Account '{$account->name}' has been created and added to this snapshot with a balance of 0.")
-                        ->success()
+                        ->title('Cannot create account')
+                        ->body($e->getMessage())
+                        ->danger()
                         ->send();
-
                 } catch (\Exception $e) {
                     Notification::make()
                         ->title('Error creating account')
