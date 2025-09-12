@@ -6,8 +6,8 @@ use App\Filament\Resources\Snapshots\SnapshotResource;
 use App\Models\Snapshot;
 use App\Services\SnapshotService;
 use Carbon\Carbon;
+use Closure;
 use Filament\Actions\Action;
-use Filament\Actions\CreateAction;
 use Filament\Facades\Filament;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
@@ -22,27 +22,51 @@ class ListSnapshots extends ListRecords
     {
         return [
             Action::make('quickSnapshot')
-                ->label('Quick Snapshot')
-                ->icon(Heroicon::OutlinedPlus)
+                ->label('New snapshot')
                 ->color('primary')
                 ->form([
                     DatePicker::make('date')
                         ->label('Snapshot Date')
                         ->required()
                         ->native(false)
-                        ->default(now())
-                        ->unique(
-                            table: Snapshot::class,
-                            column: 'date',
-                            ignoreRecord: false,
-                            modifyRuleUsing: function ($rule) {
-                                return $rule->where('user_id', Filament::auth()->id());
+                        ->default(function () {
+                            $userId = Filament::auth()->id();
+                            $existingDates = Snapshot::where('user_id', $userId)
+                                ->pluck('date')
+                                ->map(fn($date) => Carbon::parse($date)->toDateString())
+                                ->toArray();
+                            
+                            $candidate = now();
+                            while (in_array($candidate->toDateString(), $existingDates)) {
+                                $candidate = $candidate->addDay();
                             }
-                        ),
+                            
+                            return $candidate;
+                        })
+                        ->disabledDates(function () {
+                            return Snapshot::where('user_id', Filament::auth()->id())
+                                ->pluck('date')
+                                ->toArray();
+                        })
+                        ->rules([
+                            fn (): Closure => function (string $attribute, $value, Closure $fail) {
+                                $userId = Filament::auth()->id();
+
+                                // Convert to date-only format to match how the model stores dates
+                                $dateOnly = Carbon::parse($value)->toDateString();
+
+                                $query = Snapshot::where('user_id', $userId)
+                                    ->where('date', $dateOnly);
+
+                                if ($query->exists()) {
+                                    $fail('You already have a snapshot for this date. Please choose a different date.');
+                                }
+                            },
+                        ]),
                 ])
                 ->action(function (array $data): void {
                     $snapshotService = app(SnapshotService::class);
-                    
+
                     $previousAccounts = $snapshotService->getPreviousSnapshotAccounts(
                         userId: Filament::auth()->id(),
                         beforeDate: Carbon::parse($data['date'])
@@ -65,7 +89,6 @@ class ListSnapshots extends ListRecords
                     $this->redirect(SnapshotResource::getUrl('account-lists', ['record' => $snapshot]));
                 })
                 ->modal(),
-            CreateAction::make(),
         ];
     }
 }

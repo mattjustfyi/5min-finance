@@ -123,7 +123,7 @@ it('prevents bypass via direct property assignment', function () {
         ['goalId' => $this->goal1->id, 'targetAmount' => 100],
         ['goalId' => $this->goal1->id, 'targetAmount' => 200],
     ];
-    
+
     expect(fn() => $snapshot->save())->toThrow(\InvalidArgumentException::class);
 });
 
@@ -147,7 +147,7 @@ it('CAN be bypassed via query builder - VULNERABILITY FOUND!', function () {
     // Let's verify the bypass worked
     $snapshot->refresh();
     $goalIds = collect($snapshot->goals)->pluck('goalId')->filter()->toArray();
-    
+
     expect($goalIds)->toHaveCount(2);
     expect($goalIds[0])->toBe($goalIds[1]); // Both are the same ID
 });
@@ -169,7 +169,7 @@ it('CAN be bypassed via insert - VULNERABILITY FOUND!', function () {
 
     $snapshot = Snapshot::first();
     $goalIds = collect($snapshot->goals)->pluck('goalId')->filter()->toArray();
-    
+
     expect($goalIds)->toHaveCount(2);
     expect($goalIds[0])->toBe($goalIds[1]); // Both are the same ID
 });
@@ -197,4 +197,125 @@ it('handles null values', function () {
     ]);
 
     expect($snapshot->save())->toBeTrue();
+});
+
+it('prevents duplicate snapshots for same user and date via database constraint', function () {
+    $date = now()->toDateString();
+
+    // Create first snapshot
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $date,
+        'accounts' => [],
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    // Attempt to create second snapshot with same user_id and date
+    expect(fn() => Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $date,
+        'accounts' => [],
+        'goals' => [],
+        'debts' => [],
+    ]))->toThrow(\Illuminate\Database\QueryException::class);
+});
+
+it('allows same date for different users via database constraint', function () {
+    $anotherUser = User::factory()->create();
+    $date = now()->toDateString();
+
+    // Create snapshot for first user
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $date,
+        'accounts' => [],
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    // Create snapshot for second user with same date - should succeed
+    $secondSnapshot = Snapshot::create([
+        'user_id' => $anotherUser->id,
+        'date' => $date,
+        'accounts' => [],
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    expect($secondSnapshot->exists)->toBeTrue();
+    expect(Snapshot::count())->toBe(2);
+});
+
+it('allows different dates for same user via database constraint', function () {
+    $today = now()->toDateString();
+    $tomorrow = now()->addDay()->toDateString();
+
+    // Create first snapshot
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $today,
+        'accounts' => [],
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    // Create second snapshot with different date - should succeed
+    $secondSnapshot = Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $tomorrow,
+        'accounts' => [],
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    expect($secondSnapshot->exists)->toBeTrue();
+    expect(Snapshot::count())->toBe(2);
+});
+
+it('enforces constraint even with direct database operations', function () {
+    $date = now()->toDateString();
+
+    // Create first snapshot via Eloquent
+    Snapshot::create([
+        'user_id' => $this->user->id,
+        'date' => $date,
+        'accounts' => [],
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    // Attempt direct database insert with duplicate user_id/date
+    expect(fn() => \DB::table('snapshots')->insert([
+        'user_id' => $this->user->id,
+        'date' => $date,
+        'accounts' => json_encode([]),
+        'goals' => json_encode([]),
+        'debts' => json_encode([]),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]))->toThrow(\Illuminate\Database\QueryException::class);
+});
+
+it('prevents invalid dates like 2025-99-99', function () {
+    expect(fn() => new Snapshot([
+        'user_id' => $this->user->id,
+        'date' => '2025-99-99', // Invalid date
+        'accounts' => [],
+        'goals' => [],
+        'debts' => [],
+    ]))->toThrow(\InvalidArgumentException::class, 'Invalid date format. Date must be a valid date in Y-m-d format.');
+});
+
+it('allows valid dates like 2025-11-11', function () {
+    $snapshot = new Snapshot([
+        'user_id' => $this->user->id,
+        'date' => '2025-11-11', // Valid date
+        'accounts' => [],
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    expect($snapshot->save())->toBeTrue();
+    expect($snapshot->date->toDateString())->toBe('2025-11-11');
 });

@@ -18,12 +18,33 @@ class SnapshotFactory extends Factory
     {
         return [
             'user_id' => \App\Models\User::factory(),
-            'date' => $this->faker->dateTimeBetween('-1 year', 'now')->format('Y-m-d'),
+            'date' => function (array $attributes) {
+                $userId = $attributes['user_id'];
+                // Create a truly unique hash for each factory call
+                $uniqueHash = hash('crc32', $userId . uniqid('', true) . spl_object_id($this));
+                $dayOffset = (hexdec(substr($uniqueHash, 0, 6)) % 3650) + 1; // 0-10 years back, min 1 day
+                return now()->subDays($dayOffset)->format('Y-m-d');
+            },
             'notes' => $this->faker->optional()->sentence(),
             'accounts' => [],
             'goals' => [],
             'debts' => [],
         ];
+    }
+
+    public function withDate(string $date): static
+    {
+        return $this->state(['date' => $date]);
+    }
+
+    public function today(): static
+    {
+        return $this->state(['date' => now()->format('Y-m-d')]);
+    }
+
+    public function daysAgo(int $days): static
+    {
+        return $this->state(['date' => now()->subDays($days)->format('Y-m-d')]);
     }
 
     public function configure()

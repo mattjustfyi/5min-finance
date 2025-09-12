@@ -2,3 +2,5 @@
 - Use idiomatic and built-in Laravel patterns and approaches.
 - Use standard laravel commands when creating models, filament resources, migrations, etc. Then modify the result afterwards.
 - Use Filament for UI where possible
+- I'm a solo developer with no users who needs to ship fast and take risks. When providing suggestions, please consider that I prefer solutions that are fast to implement and simple to maintain.
+- The database used is SQLite.
