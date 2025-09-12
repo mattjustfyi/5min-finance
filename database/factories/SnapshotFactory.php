@@ -19,21 +19,32 @@ class SnapshotFactory extends Factory
         return [
             'user_id' => \App\Models\User::factory(),
             'date' => function (array $attributes) {
-                // Generate deterministic dates without static state
-                // Use a combination of user_id and current microtime to ensure uniqueness
                 $userId = $attributes['user_id'];
-                $uniqueSeed = crc32($userId . microtime(true) . mt_rand());
-                
-                // Generate dates going backwards from today, ensuring uniqueness per user
-                $daysBack = abs($uniqueSeed % 365) + rand(1, 30); // Up to a year back with some randomness
-                
-                return now()->subDays($daysBack)->format('Y-m-d');
+                // Create a truly unique hash for each factory call
+                $uniqueHash = hash('crc32', $userId . uniqid('', true) . spl_object_id($this));
+                $dayOffset = (hexdec(substr($uniqueHash, 0, 6)) % 3650) + 1; // 0-10 years back, min 1 day
+                return now()->subDays($dayOffset)->format('Y-m-d');
             },
             'notes' => $this->faker->optional()->sentence(),
             'accounts' => [],
             'goals' => [],
             'debts' => [],
         ];
+    }
+
+    public function withDate(string $date): static
+    {
+        return $this->state(['date' => $date]);
+    }
+
+    public function today(): static
+    {
+        return $this->state(['date' => now()->format('Y-m-d')]);
+    }
+
+    public function daysAgo(int $days): static
+    {
+        return $this->state(['date' => now()->subDays($days)->format('Y-m-d')]);
     }
 
     public function configure()
