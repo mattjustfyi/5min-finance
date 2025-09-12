@@ -67,33 +67,22 @@ class ListSnapshots extends ListRecords
                 ->action(function (array $data): void {
                     $snapshotService = app(SnapshotService::class);
 
-                    try {
-                        $beforeDate = Carbon::parse($data['date']);
-                    } catch (\Exception $e) {
-                        // Let validation handle invalid dates
-                        $beforeDate = null;
-                    }
+                    $beforeDate = Carbon::parse($data['date']);
 
-                    $previousAccounts = $beforeDate 
-                        ? $snapshotService->getPreviousSnapshotAccounts(
-                            userId: Filament::auth()->id(),
-                            beforeDate: $beforeDate
-                        )
-                        : [];
+                    $previousAccounts = $snapshotService->getPreviousSnapshotAccounts(
+                        userId: Filament::auth()->id(),
+                        beforeDate: $beforeDate
+                    );
 
-                    $previousGoals = $beforeDate 
-                        ? $snapshotService->getPreviousSnapshotGoals(
-                            userId: Filament::auth()->id(),
-                            beforeDate: $beforeDate
-                        )
-                        : [];
+                    $previousGoals = $snapshotService->getPreviousSnapshotGoals(
+                        userId: Filament::auth()->id(),
+                        beforeDate: $beforeDate
+                    );
 
-                    $previousDebts = $beforeDate 
-                        ? $snapshotService->getPreviousSnapshotDebts(
-                            userId: Filament::auth()->id(),
-                            beforeDate: $beforeDate
-                        )
-                        : [];
+                    $previousDebts = $snapshotService->getPreviousSnapshotDebts(
+                        userId: Filament::auth()->id(),
+                        beforeDate: $beforeDate
+                    );
 
                     $snapshot = Snapshot::create([
                         'user_id' => Filament::auth()->id(),
