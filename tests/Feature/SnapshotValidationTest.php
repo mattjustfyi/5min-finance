@@ -296,3 +296,26 @@ it('enforces constraint even with direct database operations', function () {
         'updated_at' => now(),
     ]))->toThrow(\Illuminate\Database\QueryException::class);
 });
+
+it('prevents invalid dates like 2025-99-99', function () {
+    expect(fn() => new Snapshot([
+        'user_id' => $this->user->id,
+        'date' => '2025-99-99', // Invalid date
+        'accounts' => [],
+        'goals' => [],
+        'debts' => [],
+    ]))->toThrow(\InvalidArgumentException::class, 'Invalid date format. Date must be a valid date in Y-m-d format.');
+});
+
+it('allows valid dates like 2025-11-11', function () {
+    $snapshot = new Snapshot([
+        'user_id' => $this->user->id,
+        'date' => '2025-11-11', // Valid date
+        'accounts' => [],
+        'goals' => [],
+        'debts' => [],
+    ]);
+
+    expect($snapshot->save())->toBeTrue();
+    expect($snapshot->date->toDateString())->toBe('2025-11-11');
+});

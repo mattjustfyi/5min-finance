@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use InvalidArgumentException;
+use Illuminate\Validation\ValidationException;
 
 class Snapshot extends Model
 {
@@ -48,9 +49,28 @@ class Snapshot extends Model
     protected function date(): Attribute
     {
         return Attribute::make(
-            set: fn ($value) => Carbon::parse($value)->toDateString(),
+            set: function ($value) {
+                // Allow Carbon instances (from now(), etc.) to pass through
+                if ($value instanceof Carbon) {
+                    return $value->toDateString();
+                }
+
+                // Validate string dates before parsing
+                $validator = validator(['date' => $value], [
+                    'date' => 'required|date|date_format:Y-m-d'
+                ]);
+
+                if ($validator->fails()) {
+                    throw new InvalidArgumentException('Invalid date format. Date must be a valid date in Y-m-d format.');
+                }
+
+                return Carbon::parse($value)->toDateString();
+            }
         );
-    }    private function validateUniqueEntries(): void
+    }
+
+
+    private function validateUniqueEntries(): void
 
     {
         // Validate unique account IDs
